@@ -1,0 +1,15 @@
+node_modules
+dist
+build
+.next
+.nuxt
+out
+coverage
+.git
+.svn
+.hg
+.DS_Store
+*.log
+.env
+.env.local
+.env.example
