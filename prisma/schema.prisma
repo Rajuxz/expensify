@@ -8,14 +8,14 @@ datasource db {
 }
 
 model Users {
-  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  username   String     @unique
-  email      String     @unique
-  password   String
-  avatar_url String?
-  created_at DateTime   @default(now())
-  updated_at DateTime?
-  expenses   Expenses[]
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username     String     @unique
+  clerk_id     String     @unique
+  phone_number String?    @unique
+  avatar_url   String?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime?
+  expenses     Expenses[]
 }
 
 model Categories {
@@ -26,7 +26,7 @@ model Categories {
   created_at DateTime   @default(now())
   updated_at DateTime?
   expenses   Expenses[]
-}
+} 
 
 enum TransactionTypes {
   CASH
