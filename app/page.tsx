@@ -1,10 +1,11 @@
-import React from "react"
-import Navbar from "@/contents/Navbar"
+import Navbar from "@/features/Navbar"
+import { Hero } from "@/features/hero"
 
 const Home = () => {
     return (
         <>
             <Navbar />
+            <Hero />
         </>
     )
 }
