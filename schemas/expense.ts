@@ -6,7 +6,7 @@ export const expenseSchema = z.object({
         .min(1, "Title is required")
         .max(100, "Title must be under 100 characters"),
 
-    amount: z
+    amount: z.coerce
         .number()
         .positive("Amount must be greater than 0")
         .multipleOf(0.01, "Amount can have at most 2 decimal places"),
@@ -24,3 +24,4 @@ export const expenseSchema = z.object({
 
 // Infer the TypeScript type from the schema
 export type ExpenseFormData = z.infer<typeof expenseSchema>
+
