@@ -21,21 +21,15 @@ import {
     PopoverContent,
 } from "@/components/ui/popover"
 import { ExpenseFormData, expenseSchema } from "@/schemas/expense"
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { createExpense } from "@/actions/expense"
+import { toast } from "sonner"
 
 const TRANSACTION_TYPES = ["CASH", "ONLINE"] as const
 
-type ExpenseFormProps = {
-    onSuccess?: () => void
-}
-
-type Category = {
-    id: string
-    name: string
-}
-
-const ExpenseForm = ({ onSuccess }: ExpenseFormProps) => {
+const ExpenseForm = () => {
     const { data: categories = [] } = useSWR("categories", getCategories)
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     const form = useForm<ExpenseFormData>({
         resolver: zodResolver(expenseSchema),
@@ -50,7 +44,17 @@ const ExpenseForm = ({ onSuccess }: ExpenseFormProps) => {
     })
 
     const onSubmit = async (data: ExpenseFormData) => {
-        console.log(data)
+        setIsSubmitting(true)
+        const result = await createExpense(data)
+        setIsSubmitting(false)
+        if (!result.success) {
+            form.setError("root", { message: result.error })
+            toast.error(result.error ?? "Something went wrong.")
+            return
+        }
+
+        form.reset()
+        toast.success("Expense added successfully.")
     }
 
     return (
@@ -240,7 +244,7 @@ const ExpenseForm = ({ onSuccess }: ExpenseFormProps) => {
                     className="w-full"
                     disabled={form.formState.isSubmitting}
                 >
-                    {form.formState.isSubmitting ? "Saving..." : "Save Expense"}
+                    {isSubmitting ? "Saving..." : "Save Expense"}
                 </Button>
             </form>
         </Card>
