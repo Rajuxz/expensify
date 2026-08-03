@@ -26,7 +26,7 @@ model Categories {
   created_at DateTime   @default(now())
   updated_at DateTime?
   expenses   Expenses[]
-} 
+}
 
 enum TransactionTypes {
   CASH
