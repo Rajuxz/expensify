@@ -6,38 +6,37 @@ import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
+import useSWR from "swr"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-
+import FieldError from "@/components/shared/field-error"
+import { getCategories } from "@/actions/category"
+import { selectableProps } from "@/lib/selectable-props"
 import {
     Popover,
     PopoverTrigger,
     PopoverContent,
 } from "@/components/ui/popover"
 import { ExpenseFormData, expenseSchema } from "@/schemas/expense"
+import { useEffect, useState } from "react"
 
-const CATEGORIES = [
-    { id: "550e8400-e29b-41d4-a716-446655440000", name: "Food" },
-    { id: "550e8400-e29b-41d4-a716-446655440001", name: "Transport" },
-] as const
 const TRANSACTION_TYPES = ["CASH", "ONLINE"] as const
 
 type ExpenseFormProps = {
-    onSubmit?: (data: {
-        title: string
-        amount: string
-        date: Date | undefined
-        transactionType: string
-        category: string
-        description: string
-    }) => void
+    onSuccess?: () => void
 }
 
-const ExpenseForm = ({ onSubmit }: ExpenseFormProps) => {
+type Category = {
+    id: string
+    name: string
+}
+
+const ExpenseForm = ({ onSuccess }: ExpenseFormProps) => {
+    const { data: categories = [] } = useSWR("categories", getCategories)
+
     const form = useForm<ExpenseFormData>({
         resolver: zodResolver(expenseSchema),
         defaultValues: {
@@ -49,9 +48,14 @@ const ExpenseForm = ({ onSubmit }: ExpenseFormProps) => {
             categoryId: "",
         },
     })
+
+    const onSubmit = async (data: ExpenseFormData) => {
+        console.log(data)
+    }
+
     return (
         <Card className="w-full sm:max-w-md px-2">
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
                 {/* Title & Amount */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -66,11 +70,9 @@ const ExpenseForm = ({ onSubmit }: ExpenseFormProps) => {
                                         placeholder="e.g. Groceries"
                                         {...field}
                                     />
-                                    {fieldState.error && (
-                                        <p className="text-sm text-destructive">
-                                            {fieldState.error.message}
-                                        </p>
-                                    )}
+                                    <FieldError
+                                        message={fieldState.error?.message}
+                                    />
                                 </>
                             )}
                         />
@@ -87,11 +89,9 @@ const ExpenseForm = ({ onSubmit }: ExpenseFormProps) => {
                                         placeholder="0.00"
                                         {...field}
                                     />
-                                    {fieldState.error && (
-                                        <p className="text-sm text-destructive">
-                                            {fieldState.error.message}
-                                        </p>
-                                    )}
+                                    <FieldError
+                                        message={fieldState.error?.message}
+                                    />
                                 </>
                             )}
                         />
@@ -136,11 +136,9 @@ const ExpenseForm = ({ onSubmit }: ExpenseFormProps) => {
                                             />
                                         </PopoverContent>
                                     </Popover>
-                                    {fieldState.error && (
-                                        <p className="text-sm text-destructive">
-                                            {fieldState.error.message}
-                                        </p>
-                                    )}
+                                    <FieldError
+                                        message={fieldState.error?.message}
+                                    />
                                 </>
                             )}
                         />
@@ -173,11 +171,9 @@ const ExpenseForm = ({ onSubmit }: ExpenseFormProps) => {
                                             </Button>
                                         ))}
                                     </div>
-                                    {fieldState.error && (
-                                        <p className="text-sm text-destructive">
-                                            {fieldState.error.message}
-                                        </p>
-                                    )}
+                                    <FieldError
+                                        message={fieldState.error?.message}
+                                    />
                                 </>
                             )}
                         />
@@ -191,8 +187,8 @@ const ExpenseForm = ({ onSubmit }: ExpenseFormProps) => {
                         control={form.control}
                         render={({ field, fieldState }) => (
                             <>
-                                <div className="flex gap-2">
-                                    {CATEGORIES.map((cat) => (
+                                <div className="flex gap-2 flex-wrap">
+                                    {categories.map((cat) => (
                                         <Badge
                                             key={cat.id}
                                             variant={
@@ -201,19 +197,17 @@ const ExpenseForm = ({ onSubmit }: ExpenseFormProps) => {
                                                     : "outline"
                                             }
                                             className="cursor-pointer px-3 py-1"
-                                            onClick={() =>
+                                            {...selectableProps(() =>
                                                 field.onChange(cat.id)
-                                            }
+                                            )}
                                         >
                                             {cat.name}
                                         </Badge>
                                     ))}
                                 </div>
-                                {fieldState.error && (
-                                    <p className="text-sm text-destructive">
-                                        {fieldState.error.message}
-                                    </p>
-                                )}
+                                <FieldError
+                                    message={fieldState.error?.message}
+                                />
                             </>
                         )}
                     />
@@ -233,11 +227,9 @@ const ExpenseForm = ({ onSubmit }: ExpenseFormProps) => {
                                     placeholder="Add any notes..."
                                     {...field}
                                 />
-                                {fieldState.error && (
-                                    <p className="text-sm text-destructive">
-                                        {fieldState.error.message}
-                                    </p>
-                                )}
+                                <FieldError
+                                    message={fieldState.error?.message}
+                                />
                             </>
                         )}
                     />
