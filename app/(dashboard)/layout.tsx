@@ -7,7 +7,7 @@ export default function DashboardLayout({
 }) {
     return (
         <DashboardShell>
-            <Toaster />
+            <Toaster richColors />
             {children}
         </DashboardShell>
     )
