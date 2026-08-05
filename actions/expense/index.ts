@@ -20,7 +20,6 @@ export async function createExpense(input: ExpenseFormData) {
                 avatar_url: clerkUser?.imageUrl,
             },
         })
-        return { success: false, error: "User not found" }
     }
 
     // adding expenses in the database.
