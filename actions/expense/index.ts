@@ -2,6 +2,7 @@
 import { Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { ExpenseFormData } from "@/schemas/expense"
+import { Expense } from "@/types/expenseTableTypes"
 import { auth, currentUser } from "@clerk/nextjs/server"
 
 export async function createExpense(input: ExpenseFormData) {
@@ -39,9 +40,87 @@ export async function createExpense(input: ExpenseFormData) {
         return { success: true, data: expense }
     } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            // e.g. P2003 = foreign key constraint failed
             return { success: false, error: "Invalid category or user" }
         }
         throw error
     }
+}
+
+export async function getExpenses(): Promise<Expense[]> {
+    const expenses = await prisma.expenses.findMany({
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                },
+            },
+        },
+        orderBy: {
+            expense_date: "desc",
+        },
+    })
+
+    return expenses
+}
+
+export async function updateExpenses(
+    expenseId: string,
+    values: ExpenseFormData
+) {
+    try {
+        const updatedExpense = await prisma.expenses.update({
+            where: {
+                id: expenseId,
+            },
+
+            data: {
+                title: values.title,
+                amount: values.amount,
+                description: values.description,
+                expense_date: values.expense_date,
+                transaction_type: values.transaction_type,
+                categoryId: values.categoryId,
+            },
+
+            include: {
+                category: true,
+            },
+        })
+
+        return {
+            success: true,
+            data: updatedExpense,
+        }
+    } catch (error) {
+        console.error("Failed to update expense:", error)
+
+        return {
+            success: false,
+            error: "Failed to update expense",
+        }
+    }
+}
+
+export async function getMonthlyExpense(year: number, month: number) {
+    // month: 0 = January, 1 = February, etc.
+
+    const startOfMonth = new Date(year, month, 1)
+
+    const startOfNextMonth = new Date(year, month + 1, 1)
+
+    const result = await prisma.expenses.aggregate({
+        _sum: {
+            amount: true,
+        },
+
+        where: {
+            expense_date: {
+                gte: startOfMonth,
+                lt: startOfNextMonth,
+            },
+        },
+    })
+
+    return result._sum.amount ?? 0
 }
