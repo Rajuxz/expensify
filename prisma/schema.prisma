@@ -26,7 +26,7 @@ model Categories {
   created_at DateTime   @default(now())
   updated_at DateTime?
   expenses   Expenses[]
-} 
+}
 
 enum TransactionTypes {
   CASH
@@ -46,4 +46,5 @@ model Expenses {
   userId           String           @db.Uuid
   category         Categories       @relation(fields: [categoryId], references: [id])
   categoryId       String           @db.Uuid
+  isDeleted        Boolean          @default(false)
 }

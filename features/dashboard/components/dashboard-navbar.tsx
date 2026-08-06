@@ -11,14 +11,17 @@ import {
 
 import ExpenseForm from "@/components/expenses/expense-form"
 import AppDialog from "@/components/shared/app-dialog"
+import { getMonthlyExpense } from "@/actions/expense"
 export function DashboardNavbar({
     collapsed,
     onCollapsedChange,
     onMobileOpenChange,
+    monthlyAmount,
 }: {
     collapsed: boolean
     onCollapsedChange: (collapsed: boolean) => void
     onMobileOpenChange: (open: boolean) => void
+    monthlyAmount: number
 }) {
     return (
         <header className="sticky top-0 z-20 flex h-14 items-center gap-1 border-b bg-background/95 px-3 backdrop-blur supports-backdrop-filter:bg-background/60 sm:px-4">
@@ -54,7 +57,9 @@ export function DashboardNavbar({
             <Tooltip>
                 <TooltipTrigger>
                     <div className="hidden  cursor-pointer items-center rounded-md border bg-muted/50 px-3 py-1.5 text-sm font-medium sm:flex">
-                        <span className="text-green-700">$0.00</span>
+                        <span className="text-green-700">
+                            Rs. {monthlyAmount ?? 0}
+                        </span>
                     </div>
                 </TooltipTrigger>
                 <TooltipContent>Total Expenses</TooltipContent>

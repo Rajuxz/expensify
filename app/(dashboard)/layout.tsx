@@ -1,8 +1,21 @@
+import { getMonthlyExpense } from "@/actions/expense"
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell"
-export default function DashboardLayout({
+import { Toaster } from "sonner"
+export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
-    return <DashboardShell>{children}</DashboardShell>
+    const now = new Date()
+
+    const year = now.getFullYear()
+    const month = now.getMonth()
+
+    const monthlyAmount = await getMonthlyExpense(year, month)
+    return (
+        <DashboardShell monthlyAmount={monthlyAmount}>
+            <Toaster richColors />
+            {children}
+        </DashboardShell>
+    )
 }

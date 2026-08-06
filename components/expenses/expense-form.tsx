@@ -21,36 +21,54 @@ import {
     PopoverContent,
 } from "@/components/ui/popover"
 import { ExpenseFormData, expenseSchema } from "@/schemas/expense"
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { createExpense, updateExpenses } from "@/actions/expense"
+import { toast } from "sonner"
+import { Expense } from "@/types/expenseTableTypes"
+type ExpenseFormProps = {
+    initialData?: Expense
+}
 
 const TRANSACTION_TYPES = ["CASH", "ONLINE"] as const
 
-type ExpenseFormProps = {
-    onSuccess?: () => void
-}
-
-type Category = {
-    id: string
-    name: string
-}
-
-const ExpenseForm = ({ onSuccess }: ExpenseFormProps) => {
+const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
     const { data: categories = [] } = useSWR("categories", getCategories)
-
     const form = useForm<ExpenseFormData>({
         resolver: zodResolver(expenseSchema),
         defaultValues: {
-            title: "",
-            amount: 1,
-            description: "",
-            expense_date: new Date(),
-            transaction_type: "CASH",
-            categoryId: "",
+            title: initialData?.title ?? "",
+            amount: initialData?.amount ?? 1,
+            description: initialData?.description ?? "",
+            expense_date: initialData?.expense_date ?? new Date(),
+            transaction_type: initialData?.transaction_type ?? "CASH",
+            categoryId: initialData?.category.id ?? "",
         },
     })
 
     const onSubmit = async (data: ExpenseFormData) => {
-        console.log(data)
+        try {
+            if (initialData) {
+                const result = await updateExpenses(initialData.id, data)
+
+                if (!result.success) {
+                    toast.error(result.error ?? "Failed to update expense")
+
+                    return
+                }
+
+                toast.success("Expense updated successfully")
+            } else {
+                const result = await createExpense(data)
+                if (!result.success) {
+                    form.setError("root", { message: result.error })
+                    toast.error(result.error ?? "Something went wrong.")
+                    return
+                }
+
+                form.reset()
+                toast.success("Expense added successfully.")
+            }
+        } catch (error) {}
     }
 
     return (
@@ -240,7 +258,13 @@ const ExpenseForm = ({ onSuccess }: ExpenseFormProps) => {
                     className="w-full"
                     disabled={form.formState.isSubmitting}
                 >
-                    {form.formState.isSubmitting ? "Saving..." : "Save Expense"}
+                    {form.formState.isSubmitting
+                        ? initialData
+                            ? "Updating..."
+                            : "Saving..."
+                        : initialData
+                          ? "Update Expense"
+                          : "Save Expense"}
                 </Button>
             </form>
         </Card>
