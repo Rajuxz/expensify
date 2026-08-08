@@ -1,29 +1,13 @@
 "use server"
+import requireUser from "@/lib/auth/getCurrentUser"
 import { Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { ExpenseFormData } from "@/schemas/expense"
 import { Expense } from "@/types/expenseTableTypes"
-import { auth, currentUser } from "@clerk/nextjs/server"
+import { currentUser } from "@clerk/nextjs/server"
 
 export async function createExpense(input: ExpenseFormData) {
-    const { userId: clerkId } = await auth.protect()
-
-    let user = await prisma.users.findUnique({ where: { clerk_id: clerkId } })
-    if (!user) {
-        const clerkUser = await currentUser()
-        user = await prisma.users.create({
-            data: {
-                clerk_id: clerkId,
-                username:
-                    clerkUser?.username ??
-                    clerkUser?.emailAddresses[0]?.emailAddress ??
-                    clerkId,
-                avatar_url: clerkUser?.imageUrl,
-            },
-        })
-    }
-
-    // adding expenses in the database.
+    const user = await requireUser()
     try {
         const expense = await prisma.expenses.create({
             data: {
@@ -47,21 +31,13 @@ export async function createExpense(input: ExpenseFormData) {
 }
 
 export async function getExpenses(): Promise<Expense[]> {
-    const expenses = await prisma.expenses.findMany({
-        include: {
-            category: {
-                select: {
-                    id: true,
-                    name: true,
-                },
-            },
-        },
-        orderBy: {
-            expense_date: "desc",
-        },
-    })
+    const user = await requireUser()
 
-    return expenses
+    return prisma.expenses.findMany({
+        include: { category: { select: { id: true, name: true } } },
+        where: { isDeleted: false, userId: user.id },
+        orderBy: { expense_date: "desc" },
+    })
 }
 
 export async function updateExpenses(
@@ -81,6 +57,7 @@ export async function updateExpenses(
                 expense_date: values.expense_date,
                 transaction_type: values.transaction_type,
                 categoryId: values.categoryId,
+                updated_at: new Date(),
             },
 
             include: {
@@ -104,6 +81,7 @@ export async function updateExpenses(
 
 export async function getMonthlyExpense(year: number, month: number) {
     // month: 0 = January, 1 = February, etc.
+    const user = await requireUser()
 
     const startOfMonth = new Date(year, month, 1)
 
@@ -119,8 +97,51 @@ export async function getMonthlyExpense(year: number, month: number) {
                 gte: startOfMonth,
                 lt: startOfNextMonth,
             },
+            isDeleted: false,
+            userId: user?.id,
         },
     })
 
     return result._sum.amount ?? 0
+}
+
+//to soft delete expense.
+export async function softDeleteExpense(expenseId: string) {
+    return await prisma.expenses.update({
+        where: {
+            id: expenseId,
+        },
+        data: {
+            isDeleted: true,
+        },
+    })
+}
+
+// Get spending trends for week
+export async function getWeeklySpendingTrend(weekStart: Date) {
+    const user = await requireUser()
+
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekEnd.getDate() + 7)
+
+    const expenses = await prisma.expenses.findMany({
+        where: {
+            userId: user.id,
+            isDeleted: false,
+            expense_date: { gte: weekStart, lt: weekEnd },
+        },
+        select: { amount: true, expense_date: true },
+    })
+
+    // bucket by day-of-week
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    const totals = days.map((label) => ({ day: label, total: 0 }))
+
+    for (const e of expenses) {
+        const dayIndex = e.expense_date.getDay() // 0=Sun..6=Sat
+        totals[dayIndex].total += Number(e.amount)
+    }
+
+    // [{ day: "Sun", total: 42.5 }, { day: "Mon", total: 0 }, ...]
+    return totals
 }
