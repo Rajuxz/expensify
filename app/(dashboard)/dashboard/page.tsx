@@ -1,28 +1,48 @@
-import { WeeklySpendingChart } from "@/components/dashboard/dashboard-charts"
+// app/dashboard/page.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+    CashVsOnlineChart,
+    WeeklySpendingChart,
+} from "@/components/dashboard/dashboard-charts"
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { StatCard } from "@/components/dashboard/stat-card"
+import { PlaceholderCard } from "@/components/dashboard/placeholder-card"
 import { getStartOfWeek } from "@/lib/helpers/getStartOfWeek"
-
-const Dashboard = () => {
+import {
+    getAverageDailySpend,
+    getCashVsOnlineSplit,
+    getMonthlyExpense,
+    getMonthOverMonthComparison,
+    getWeeklyExpense,
+    getWeeklySpendingTrend,
+} from "@/actions/expense"
+import { MonthComparisonCard } from "@/components/dashboard/month-comparison-card"
+const Dashboard = async () => {
     const now = new Date()
+    const weekStart = getStartOfWeek(now)
+    const weekEnd = new Date(weekStart)
+    const year = now.getFullYear()
+    const month = now.getMonth()
 
+    weekEnd.setDate(weekEnd.getDate() + 7)
+
+    const [
+        avgPerDay,
+        splitData,
+        weeklySpending,
+        monthlySpending,
+        monthComparison,
+    ] = await Promise.all([
+        getAverageDailySpend(weekStart, weekEnd),
+        getCashVsOnlineSplit(),
+        getWeeklyExpense(weekStart, weekEnd),
+        getMonthlyExpense(year, month),
+        getMonthOverMonthComparison(year, month),
+    ])
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-            {/* Header */}
-            <div className="flex flex-col gap-1">
-                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-                    Dashboard
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                    {now.toLocaleDateString("en-US", {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                    })}
-                    {" · "}Here&apos;s where your money went this week
-                </p>
-            </div>
+            <DashboardHeader now={now} />
 
-            {/* Spending chart + cash/online split — side by side */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2">
                     <CardHeader>
@@ -43,63 +63,35 @@ const Dashboard = () => {
                             Split by transaction type
                         </p>
                     </CardHeader>
-                    <CardContent className="flex items-center justify-center min-h-60">
-                        <p className="text-sm text-muted-foreground">
-                            Pie chart coming soon
-                        </p>
+                    <CardContent>
+                        <CashVsOnlineChart data={splitData} />
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Stat cards — placeholders */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <PlaceholderCard label="This month" />
-                <PlaceholderCard label="This week" />
-                <PlaceholderCard label="Avg per day" />
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <StatCard label="This month" value={`Rs. ${monthlySpending}`} />
+                <StatCard label="This week" value={`Rs. ${weeklySpending}`} />
+                <StatCard
+                    label="Avg per day"
+                    value={`Rs. ${avgPerDay.toFixed(2)} `}
+                />
+                <MonthComparisonCard {...monthComparison} />
             </div>
 
-            {/* Table + calendar filter — placeholders */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                    <Card className="h-full min-h-75">
-                        <CardHeader>
-                            <CardTitle>Recent expenses</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                Expense table coming soon
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div>
-                    <Card className="h-full min-h-75">
-                        <CardHeader>
-                            <CardTitle>Filter by date</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                Calendar filter coming soon
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
+                <PlaceholderCard
+                    className="lg:col-span-2 min-h-75"
+                    title="Recent expenses"
+                    message="Expense table coming soon"
+                />
+                <PlaceholderCard
+                    className="min-h-75"
+                    title="Filter by date"
+                    message="Calendar filter coming soon"
+                />
             </div>
         </div>
-    )
-}
-
-function PlaceholderCard({ label }: { label: string }) {
-    return (
-        <Card>
-            <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="text-2xl font-semibold tracking-tight mt-1 text-muted-foreground/50">
-                    —
-                </p>
-            </CardContent>
-        </Card>
     )
 }
 

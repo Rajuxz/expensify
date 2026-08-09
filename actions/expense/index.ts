@@ -4,7 +4,9 @@ import { Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { ExpenseFormData } from "@/schemas/expense"
 import { Expense } from "@/types/expenseTableTypes"
+import { resolveMultipleLabels } from "@base-ui/react/internals/resolveValueLabel"
 import { currentUser } from "@clerk/nextjs/server"
+import { gte } from "zod"
 
 export async function createExpense(input: ExpenseFormData) {
     const user = await requireUser()
@@ -105,6 +107,24 @@ export async function getMonthlyExpense(year: number, month: number) {
     return result._sum.amount ?? 0
 }
 
+export async function getWeeklyExpense(from: Date, to: Date) {
+    const user = await requireUser()
+    const total = await prisma.expenses.aggregate({
+        _sum: {
+            amount: true,
+        },
+        where: {
+            expense_date: {
+                gte: from,
+                lte: to,
+            },
+            isDeleted: false,
+            userId: user?.id,
+        },
+    })
+    return total._sum.amount ?? 0
+}
+
 //to soft delete expense.
 export async function softDeleteExpense(expenseId: string) {
     return await prisma.expenses.update({
@@ -144,4 +164,103 @@ export async function getWeeklySpendingTrend(weekStart: Date) {
 
     // [{ day: "Sun", total: 42.5 }, { day: "Mon", total: 0 }, ...]
     return totals
+}
+
+// to calculate total cash spending and online spending.
+export async function getCashVsOnlineSplit() {
+    const user = await requireUser()
+
+    const result = await prisma.expenses.groupBy({
+        by: ["transaction_type"],
+        where: {
+            userId: user.id,
+            isDeleted: false,
+        },
+        _sum: {
+            amount: true,
+        },
+    })
+
+    return result.map((r) => ({
+        type: r.transaction_type,
+        total: Number(r._sum.amount ?? 0),
+    }))
+}
+
+//Calculate average spending per day.
+export async function getAverageDailySpend(from: Date, to: Date) {
+    const user = await requireUser()
+
+    const result = await prisma.expenses.aggregate({
+        _sum: { amount: true },
+        where: {
+            userId: user.id,
+            isDeleted: false,
+            expense_date: { gte: from, lt: to },
+        },
+    })
+
+    const total = Number(result._sum.amount ?? 0)
+    const days = Math.ceil(
+        (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)
+    )
+
+    return days > 0 ? total / days : 0
+}
+
+// compare previous month and this month
+export async function getMonthOverMonthComparison(year: number, month: number) {
+    const user = await requireUser()
+
+    // current month range
+    const currentStart = new Date(year, month, 1)
+    const currentEnd = new Date(year, month + 1, 1)
+
+    // previous month range (handles January -> December of prior year automatically)
+    const previousStart = new Date(year, month - 1, 1)
+    const previousEnd = new Date(year, month, 1)
+
+    const [currentResult, previousResult] = await Promise.all([
+        prisma.expenses.aggregate({
+            _sum: { amount: true },
+            where: {
+                userId: user.id,
+                isDeleted: false,
+                expense_date: { gte: currentStart, lt: currentEnd },
+            },
+        }),
+        prisma.expenses.aggregate({
+            _sum: { amount: true },
+            where: {
+                userId: user.id,
+                isDeleted: false,
+                expense_date: { gte: previousStart, lt: previousEnd },
+            },
+        }),
+    ])
+
+    const current = Number(currentResult._sum.amount ?? 0)
+    const previous = Number(previousResult._sum.amount ?? 0)
+
+    let percentChange: number | null = null
+    if (previous > 0) {
+        percentChange = ((current - previous) / previous) * 100
+    } else if (current > 0) {
+        percentChange = 100 // went from 0 to something — treat as +100%
+    }
+    // if both are 0, percentChange stays null (nothing to compare)
+
+    return {
+        current,
+        previous,
+        percentChange,
+        trend:
+            percentChange === null
+                ? "flat"
+                : percentChange > 0
+                  ? "up"
+                  : percentChange < 0
+                    ? "down"
+                    : "flat",
+    } as const
 }
