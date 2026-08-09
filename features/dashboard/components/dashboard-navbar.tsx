@@ -11,7 +11,6 @@ import {
 
 import ExpenseForm from "@/components/expenses/expense-form"
 import AppDialog from "@/components/shared/app-dialog"
-import { getMonthlyExpense } from "@/actions/expense"
 export function DashboardNavbar({
     collapsed,
     onCollapsedChange,
