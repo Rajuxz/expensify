@@ -8,6 +8,8 @@ import {
     ComboboxItem,
     ComboboxList,
 } from "@/components/ui/combobox"
+
+import { Field, FieldContent } from "@/components/ui/field"
 import {
     ColumnDef,
     flexRender,
@@ -16,8 +18,6 @@ import {
     getPaginationRowModel,
     ColumnFiltersState,
     getFilteredRowModel,
-    SortingState,
-    getSortedRowModel,
 } from "@tanstack/react-table"
 
 import {
@@ -30,6 +30,8 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 
 type DataTableProps<TData, TValue> = {
     columns: ColumnDef<TData, TValue>[]
@@ -42,9 +44,21 @@ export function DataTable<TData, TValue>({
     data,
 }: DataTableProps<TData, TValue>) {
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+    const [todayOnly, setTodayOnly] = useState(false)
 
+    const tableData = useMemo(() => {
+        if (!todayOnly) return data
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        return data.filter((row) => {
+            const rowDate = new Date((row as any).expense_date)
+            rowDate.setHours(0, 0, 0, 0)
+            return rowDate.getTime() === today.getTime()
+        })
+    }, [data, todayOnly])
     const table = useReactTable({
-        data,
+        data: tableData,
         columns,
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
@@ -63,12 +77,24 @@ export function DataTable<TData, TValue>({
                 0
             )
     }, [table.getFilteredRowModel().rows])
+
     const paymentTypeFilter =
         (table.getColumn("transaction_type")?.getFilterValue() as string) ?? ""
 
     return (
         <div>
             <div className="flex items-center justify-end py-1">
+                <Field orientation="horizontal">
+                    <Checkbox
+                        id="today-spending"
+                        checked={todayOnly}
+                        onCheckedChange={(checked) =>
+                            setTodayOnly(checked === true)
+                        }
+                        name="today-spending"
+                    />
+                    <Label htmlFor="today-spending">Today's Spending</Label>
+                </Field>
                 <Combobox
                     items={paymentType}
                     value={paymentTypeFilter}
