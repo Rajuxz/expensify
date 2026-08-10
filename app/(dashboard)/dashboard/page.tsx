@@ -6,7 +6,7 @@ import {
 } from "@/components/dashboard/dashboard-charts"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { StatCard } from "@/components/dashboard/stat-card"
-import { PlaceholderCard } from "@/components/dashboard/placeholder-card"
+import { PlaceholderCard } from "@/components/shared/placeholder-card"
 import { getStartOfWeek } from "@/lib/helpers/getStartOfWeek"
 import {
     getAverageDailySpend,
