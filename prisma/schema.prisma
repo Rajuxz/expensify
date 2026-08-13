@@ -21,7 +21,7 @@ model Users {
 
 model Categories {
   id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name       String     @unique
+  name       String
   color      String?
   created_at DateTime   @default(now())
   updated_at DateTime?
