@@ -10,8 +10,10 @@ export default async function requireUser() {
 
     // fallback: create on first access (used by createExpense today)
     const clerkUser = await currentUser()
-    return prisma.users.create({
-        data: {
+    return prisma.users.upsert({
+        where: { clerk_id: clerkId },
+        update: {},
+        create: {
             clerk_id: clerkId,
             username:
                 clerkUser?.username ??
