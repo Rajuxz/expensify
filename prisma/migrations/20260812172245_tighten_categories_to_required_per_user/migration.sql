@@ -14,12 +14,6 @@ ALTER TABLE "Categories" DROP CONSTRAINT "Categories_userId_fkey";
 ALTER TABLE "Categories" ALTER COLUMN "userId" SET NOT NULL;
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Categories_name_key" ON "Categories"("name");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Categories_icon_key" ON "Categories"("icon");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Categories_userId_name_key" ON "Categories"("userId", "name");
 
 -- AddForeignKey
