@@ -1,4 +1,4 @@
-import { getCategories } from "@/actions/category"
+import { createCategory, getCategories } from "@/actions/category"
 import { Button } from "@/components/ui/button"
 import {
     Card,
@@ -9,28 +9,32 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState, useTransition } from "react"
+import { toast, useSonner } from "sonner"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
+import { CategoryList } from "./visible-categories"
 
 const ManageCategory = () => {
     const [newCategory, setNewCategory] = useState("")
-
     const { data: categories, isLoading } = useSWR("categories", getCategories)
+    const [pending, startTransition] = useTransition()
+    const router = useRouter()
 
-    // const handleDeleteCategory = (id: string) => {
-    //     // TODO: call deleteCategory Server Action
-    //     setCategories((prev) => prev.filter((c) => c.id !== id))
-    // }
+    function handleCreate() {
+        if (!newCategory.trim()) return
 
-    // const handleAddCategory = () => {
-    //     if (!newCategory.trim()) return
-    //     // TODO: call createCategory Server Action
-    //     setCategories((prev) => [
-    //         ...prev,
-    //         { id: crypto.randomUUID(), name: newCategory.trim() },
-    //     ])
-    //     setNewCategory("")
-    // }
+        startTransition(async () => {
+            const result = await createCategory(newCategory)
+            if (result.success) {
+                setNewCategory("")
+                toast.success("Category created. ")
+                router.refresh()
+            } else {
+                toast.error("Something went wrong.")
+            }
+        })
+    }
 
     return (
         <Card>
@@ -41,30 +45,16 @@ const ManageCategory = () => {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-                <div className="space-y-2">
-                    {categories?.map((cat) => (
-                        <div
-                            key={cat.id}
-                            className="flex items-center justify-between text-sm"
-                        >
-                            <span>{cat.name}</span>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => console.log("This")}
-                            >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                        </div>
-                    ))}
-                </div>
+                <CategoryList categories={categories} />
                 <div className="flex gap-2">
                     <Input
                         placeholder="New category"
                         value={newCategory}
                         onChange={(e) => setNewCategory(e.target.value)}
                     />
-                    <Button>Add</Button>
+                    <Button onClick={handleCreate} disabled={pending}>
+                        Add
+                    </Button>
                 </div>
             </CardContent>
         </Card>
