@@ -6,14 +6,14 @@ import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import useSWR from "swr"
+import useSWR, { mutate } from "swr"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import FieldError from "@/components/shared/field-error"
-import { getCategories } from "@/actions/category"
+import { createCategory, getCategories } from "@/actions/category"
 import { selectableProps } from "@/lib/selectable-props"
 import {
     Popover,
@@ -25,6 +25,7 @@ import { useState } from "react"
 import { createExpense, updateExpenses } from "@/actions/expense"
 import { toast } from "sonner"
 import { Expense } from "@/types/expenseTableTypes"
+import { CategoryDialog } from "@/features/setting/components/category-form"
 type ExpenseFormProps = {
     initialData?: Expense
 }
@@ -32,7 +33,12 @@ type ExpenseFormProps = {
 const TRANSACTION_TYPES = ["CASH", "ONLINE"] as const
 
 const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
-    const { data: categories = [] } = useSWR("categories", getCategories)
+    const { data: categories = [], isLoading: categoriesLoading } = useSWR(
+        "categories",
+        getCategories
+    )
+    const hasCategories = categories.length > 0
+
     const form = useForm<ExpenseFormData>({
         resolver: zodResolver(expenseSchema),
         defaultValues: {
@@ -44,7 +50,16 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
             categoryId: initialData?.category.id ?? "",
         },
     })
-
+    async function handleCreateCategory(values: { name: string }) {
+        const result = await createCategory(values.name)
+        if (result.success) {
+            toast.success("Category created.")
+            mutate("categories")
+        } else {
+            toast.error(result.error ?? "Something went wrong.")
+            throw new Error("Failed to create category")
+        }
+    }
     const onSubmit = async (data: ExpenseFormData) => {
         try {
             if (initialData) {
@@ -200,35 +215,49 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
                 {/* Category */}
                 <div className="space-y-1.5">
                     <Label>Category</Label>
-                    <Controller
-                        name="categoryId"
-                        control={form.control}
-                        render={({ field, fieldState }) => (
-                            <>
-                                <div className="flex gap-2 flex-wrap">
-                                    {categories.map((cat) => (
-                                        <Badge
-                                            key={cat.id}
-                                            variant={
-                                                field.value === cat.id
-                                                    ? "default"
-                                                    : "outline"
-                                            }
-                                            className="cursor-pointer px-3 py-1"
-                                            {...selectableProps(() =>
-                                                field.onChange(cat.id)
-                                            )}
-                                        >
-                                            {cat.name}
-                                        </Badge>
-                                    ))}
-                                </div>
-                                <FieldError
-                                    message={fieldState.error?.message}
-                                />
-                            </>
-                        )}
-                    />
+                    {categoriesLoading ? (
+                        <p className="text-sm text-muted-foreground">
+                            Loading categories...
+                        </p>
+                    ) : !hasCategories ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>No categories yet.</span>
+                            <CategoryDialog
+                                mode="add"
+                                onSubmit={handleCreateCategory}
+                            />
+                        </div>
+                    ) : (
+                        <Controller
+                            name="categoryId"
+                            control={form.control}
+                            render={({ field, fieldState }) => (
+                                <>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {categories.map((cat) => (
+                                            <Badge
+                                                key={cat.id}
+                                                variant={
+                                                    field.value === cat.id
+                                                        ? "default"
+                                                        : "outline"
+                                                }
+                                                className="cursor-pointer px-3 py-1"
+                                                {...selectableProps(() =>
+                                                    field.onChange(cat.id)
+                                                )}
+                                            >
+                                                {cat.name}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                    <FieldError
+                                        message={fieldState.error?.message}
+                                    />
+                                </>
+                            )}
+                        />
+                    )}
                 </div>
 
                 {/* Description */}

@@ -14,6 +14,8 @@ type AppDialogProps = {
     title?: string
     description?: string
     children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
 }
 
 const AppDialog = ({
@@ -21,9 +23,11 @@ const AppDialog = ({
     title,
     description,
     children,
+    open,
+    onOpenChange,
 }: AppDialogProps) => {
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogTrigger render={trigger} />
             <DialogContent>
                 {(title || description) && (
