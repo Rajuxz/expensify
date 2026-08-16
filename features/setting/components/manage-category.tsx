@@ -1,5 +1,4 @@
 import { createCategory, getCategories } from "@/actions/category"
-import { Button } from "@/components/ui/button"
 import {
     Card,
     CardContent,
@@ -7,33 +6,24 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Trash2 } from "lucide-react"
-import { useState, useTransition } from "react"
-import { toast, useSonner } from "sonner"
-import { useRouter } from "next/navigation"
-import useSWR from "swr"
-import { CategoryList } from "./visible-categories"
+
+import { toast } from "sonner"
+import useSWR, { mutate } from "swr"
+import { CategoryItem } from "./category-item"
+import { CategoryDialog } from "./category-form"
 
 const ManageCategory = () => {
-    const [newCategory, setNewCategory] = useState("")
-    const { data: categories, isLoading } = useSWR("categories", getCategories)
-    const [pending, startTransition] = useTransition()
-    const router = useRouter()
+    const { data: categories } = useSWR("categories", getCategories)
 
-    function handleCreate() {
-        if (!newCategory.trim()) return
-
-        startTransition(async () => {
-            const result = await createCategory(newCategory)
-            if (result.success) {
-                setNewCategory("")
-                toast.success("Category created. ")
-                router.refresh()
-            } else {
-                toast.error("Something went wrong.")
-            }
-        })
+    async function handleCreate(values: { name: string }) {
+        const result = await createCategory(values.name)
+        if (result.success) {
+            toast.success("Category created.")
+            mutate("categories")
+        } else {
+            toast.error("Something went wrong.")
+            throw new Error("Failed to create category") 
+        }
     }
 
     return (
@@ -45,17 +35,12 @@ const ManageCategory = () => {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-                <CategoryList categories={categories} />
-                <div className="flex gap-2">
-                    <Input
-                        placeholder="New category"
-                        value={newCategory}
-                        onChange={(e) => setNewCategory(e.target.value)}
-                    />
-                    <Button onClick={handleCreate} disabled={pending}>
-                        Add
-                    </Button>
-                </div>
+                {categories?.map((category) => {
+                    return (
+                        <CategoryItem key={category.id} category={category} />
+                    )
+                })}
+                <CategoryDialog mode="add" onSubmit={handleCreate} />
             </CardContent>
         </Card>
     )
