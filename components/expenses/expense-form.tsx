@@ -88,7 +88,14 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
 
     return (
         <Card className="w-full sm:max-w-md px-2">
-            <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+            <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    form.handleSubmit(onSubmit)
+                }}
+            >
                 {/* Title & Amount */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
