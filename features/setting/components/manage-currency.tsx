@@ -1,3 +1,4 @@
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import {
@@ -35,7 +36,10 @@ export default function ManageCurrency() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Change Currency Preferance</CardTitle>
+                <CardTitle>
+                    Change Currency Preferance
+                    <StatusBadge label="Coming soon" variant="warning" />
+                </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
                 <Field>
