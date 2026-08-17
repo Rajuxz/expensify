@@ -93,7 +93,7 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
                 onSubmit={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    form.handleSubmit(onSubmit)
+                    form.handleSubmit(onSubmit)(e)
                 }}
             >
                 {/* Title & Amount */}
