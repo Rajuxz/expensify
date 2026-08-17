@@ -107,6 +107,68 @@ export async function getMonthlyExpense(year: number, month: number) {
     return result._sum.amount ?? 0
 }
 
+export async function getDailyExpense() {
+    const user = await requireUser()
+    const today = new Date()
+
+    const startOfDay = new Date(today)
+    startOfDay.setHours(0, 0, 0, 0)
+
+    const endOfDay = new Date(today)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    const total = await prisma.expenses.aggregate({
+        _sum: { amount: true },
+        where: {
+            expense_date: {
+                gte: startOfDay,
+                lte: endOfDay,
+            },
+            isDeleted: false,
+            userId: user?.id,
+        },
+    })
+
+    return Number(total._sum.amount ?? 0)
+}
+
+export async function getYearlyExpense(year: number) {
+    const user = await requireUser()
+
+    const startOfYear = new Date(year, 0, 1, 0, 0, 0, 0) // Jan 1, 00:00:00
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999) // Dec 31, 23:59:59.999
+
+    const total = await prisma.expenses.aggregate({
+        _sum: { amount: true },
+        where: {
+            expense_date: {
+                gte: startOfYear,
+                lte: endOfYear,
+            },
+            isDeleted: false,
+            userId: user?.id,
+        },
+    })
+
+    return Number(total._sum.amount ?? 0)
+}
+export async function getTotalTransaction(year: number) {
+    const user = await requireUser()
+    const startOfYear = new Date(year, 0, 1, 0, 0, 0, 0)
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999)
+
+    const result = await prisma.expenses.aggregate({
+        _count: { id: true },
+        where: {
+            isDeleted: false,
+            expense_date: { gte: startOfYear, lte: endOfYear },
+            userId: user.id,
+        },
+    })
+
+    return result._count.id ?? 0
+}
+
 export async function getWeeklyExpense(from: Date, to: Date) {
     const user = await requireUser()
     const total = await prisma.expenses.aggregate({
@@ -183,6 +245,33 @@ export async function getCashVsOnlineSplit() {
 
     return result.map((r) => ({
         type: r.transaction_type,
+        total: Number(r._sum.amount ?? 0),
+    }))
+}
+
+export async function getSpendingPerCategory() {
+    const user = await requireUser()
+    const result = await prisma.expenses.groupBy({
+        by: ["categoryId"],
+        where: {
+            userId: user.id,
+            isDeleted: false,
+        },
+        _sum: {
+            amount: true,
+        },
+    })
+
+    const categories = await prisma.categories.findMany({
+        where: { id: { in: result.map((cat) => cat.categoryId) } },
+        select: { id: true, name: true },
+    })
+
+    const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
+
+    return result.map((r) => ({
+        categoryId: r.categoryId,
+        name: categoryMap.get(r.categoryId) ?? "Unknown",
         total: Number(r._sum.amount ?? 0),
     }))
 }
