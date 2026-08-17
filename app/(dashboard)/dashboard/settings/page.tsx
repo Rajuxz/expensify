@@ -2,6 +2,7 @@
 import ManageCategory from "@/features/setting/components/manage-category"
 import ManageCurrency from "@/features/setting/components/manage-currency"
 import ManageProfile from "@/features/setting/components/manage-profile"
+import SignOut from "@/features/setting/components/sign-out"
 
 export default function SettingsPage() {
     return (
@@ -10,8 +11,8 @@ export default function SettingsPage() {
 
             <ManageProfile />
             <ManageCategory />
-
             <ManageCurrency />
+            <SignOut />
         </div>
     )
 }
