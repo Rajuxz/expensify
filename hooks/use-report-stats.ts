@@ -1,15 +1,10 @@
-// hooks/use-report-stats.ts
-import { usePeriodStat } from "./use-period-stat"
-import {
-    getMonthlyExpense,
-    getWeeklyExpense,
-    getDailyExpense,
-    getYearlyExpense,
-    getTotalTransaction,
-} from "@/actions/expense"
+import { getReportStats } from "@/actions/expense"
+import { ReportStats } from "@/features/reports/types"
 import { getStartOfWeek } from "@/lib/helpers/getStartOfWeek"
+import useSWR from "swr"
 
-export function useReportStats() {
+// hooks/use-report-stats.ts
+export function useReportStats(initialData?: ReportStats) {
     const now = new Date()
     const year = now.getFullYear()
     const month = now.getMonth()
@@ -17,37 +12,17 @@ export function useReportStats() {
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekEnd.getDate() + 7)
 
-    const { data: totalTransactions } = usePeriodStat(
-        "total-transactions",
-        () => getTotalTransaction(year),
-        [year]
-    )
-    const { data: yearlyExpense } = usePeriodStat(
-        "yearly-spending",
-        () => getYearlyExpense(year),
-        [year]
-    )
-    const { data: monthlySpending } = usePeriodStat(
-        "monthly-expense",
-        () => getMonthlyExpense(year, month),
-        [year, month]
-    )
-    const { data: weeklySpending } = usePeriodStat(
-        "weekly-spending",
-        () => getWeeklyExpense(weekStart, weekEnd),
-        [weekStart, weekEnd]
-    )
-    const { data: dailySpending } = usePeriodStat(
-        "daily-spending",
-        () => getDailyExpense(),
-        []
+    const { data } = useSWR(
+        ["report-stats", year, month, weekStart.toISOString()],
+        () => getReportStats(year, month, weekStart, weekEnd),
+        { fallbackData: initialData }
     )
 
     return [
-        { label: "Total Transaction", value: totalTransactions },
-        { label: "This year", value: yearlyExpense },
-        { label: "This Month", value: monthlySpending },
-        { label: "This Week", value: weeklySpending },
-        { label: "Today", value: dailySpending },
+        { label: "Total Transaction", value: data?.totalTransactions },
+        { label: "This year", value: data?.yearlyExpense },
+        { label: "This Month", value: data?.monthlySpending },
+        { label: "This Week", value: data?.weeklySpending },
+        { label: "Today", value: data?.dailySpending },
     ]
 }
