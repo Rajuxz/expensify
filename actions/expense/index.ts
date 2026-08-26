@@ -353,3 +353,32 @@ export async function getMonthOverMonthComparison(year: number, month: number) {
                     : "flat",
     } as const
 }
+
+export async function getReportStats(
+    year: number,
+    month: number,
+    weekStart: Date,
+    weekEnd: Date
+) {
+    const [
+        totalTransactions,
+        yearlyExpense,
+        monthlySpending,
+        weeklySpending,
+        dailySpending,
+    ] = await Promise.all([
+        getTotalTransaction(year),
+        getYearlyExpense(year),
+        getMonthlyExpense(year, month),
+        getWeeklyExpense(weekStart, weekEnd),
+        getDailyExpense(),
+    ])
+
+    return {
+        totalTransactions,
+        yearlyExpense,
+        monthlySpending,
+        weeklySpending,
+        dailySpending,
+    }
+}
