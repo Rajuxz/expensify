@@ -5,6 +5,7 @@ interface WeeklyReportData {
     from: string
     to: string
     total: number
+    user: string
     rows: {
         time: string
         title: string
@@ -16,25 +17,25 @@ interface WeeklyReportData {
 }
 
 export function generateWeeklyReportPdf(data: WeeklyReportData) {
-    const doc = new jsPDF({ orientation: "landscape", format: "a4" })
+    const doc = new jsPDF({ orientation: "portrait", format: "a4" })
 
     doc.setFontSize(16)
     doc.text("Weekly Expense Report", 14, 18)
-
     doc.setFontSize(10)
     doc.setTextColor(100)
-    doc.text(`From: ${data.from}`, 14, 26)
-    doc.text(`To: ${data.to}`, 14, 32)
+    doc.text(`User: ${data.user}`, 14, 26)
+    doc.text(`From: ${data.from}`, 14, 32)
+    doc.text(`To: ${data.to}`, 14, 36)
     doc.text(`Total: Rs. ${data.total.toFixed(2)}`, 14, 40)
 
     autoTable(doc, {
         startY: 45,
-        head: [["Time", "Title", "Payment", "Amount (Rs.) ", "Note"]],
-        body: data.rows.map((r) => [
-            r.time,
+        head: [["S.N.", "Title", "Payment", "Amount", "Note"]],
+        body: data.rows.map((r, i) => [
+            i + 1,
             r.title,
             r.paymentType,
-            `${r.amount.toFixed(2)}`,
+            `Rs. ${r.amount.toFixed(2)}`,
             r.note,
         ]),
         headStyles: { fillColor: [30, 30, 30] },
@@ -43,4 +44,3 @@ export function generateWeeklyReportPdf(data: WeeklyReportData) {
 
     doc.save(`weekly-report-${data.from}-${data.to}.pdf`)
 }
-
