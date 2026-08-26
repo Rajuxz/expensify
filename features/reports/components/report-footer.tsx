@@ -2,14 +2,19 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { getDailyReportData, getWeeklyReport } from "@/actions/reports"
+import {
+    getDailyReportData,
+    getMonthlyReport,
+    getWeeklyReport,
+    getYearlyReport,
+} from "@/actions/reports"
 import { cn } from "@/lib/utils"
 
 import { FileSpreadsheet, FileText } from "lucide-react"
 import { toast } from "sonner"
-
 import { reports, Period } from "@/constants/report-footer-constants"
 import getCurrentWeek from "@/lib/helpers/getCurrentWeek"
+
 export function ReportFooter() {
     const [loading, setLoading] = useState<string | null>(null)
 
@@ -44,8 +49,38 @@ export function ReportFooter() {
                 generateWeeklyReportPdf(data)
                 toast.success("Pdf downloaded.")
                 return
-            }
+            } else if (period === "monthly" && format == "pdf") {
+                const now = new Date()
+                const year = now.getFullYear()
+                const month = now.getMonth() + 1
 
+                const data = await getMonthlyReport(year, month)
+
+                if (data.rows.length === 0) {
+                    toast.error("No expenses recorded this month.")
+                    return
+                }
+                const { generateMonthlyReportPdf } =
+                    await import("@/lib/pdf/monthly-report")
+
+                generateMonthlyReportPdf(data)
+                toast.success("Pdf downloaded.")
+                return
+            } else if (period === "yearly" && format == "pdf") {
+                const now = new Date()
+                const year = now.getFullYear()
+                const data = await getYearlyReport(year)
+                if (data.rows.length === 0) {
+                    toast.error("No expenses recorded this month.")
+                    return
+                }
+                const { generateYearlyReportPdf } =
+                    await import("@/lib/pdf/yearly-report")
+
+                generateYearlyReportPdf(data)
+                toast.success("Pdf downloaded.")
+                return
+            }
             // other period/format combinations go here as you build them
             toast.error("This report type isn't available yet.")
         } catch (error) {
@@ -59,70 +94,149 @@ export function ReportFooter() {
     return (
         <div className="border-t pt-5 space-y-4">
             <div>
-                <h3 className="text-sm font-semibold">Download reports</h3>
-                <p className="text-xs text-muted-foreground">
-                    Export your expense data by period.
-                </p>
+                <div>
+                    <h3 className="text-sm font-semibold">General reports</h3>
+                    <p className="text-xs text-muted-foreground">
+                        Export your expense data by period.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {reports.map(
+                        ({ period, label, description, icon: Icon }) => (
+                            <div
+                                key={period}
+                                className="group flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors hover:border-foreground/20 hover:bg-muted/40"
+                            >
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                        <Icon className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium leading-none">
+                                            {label}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                                            {description}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        disabled={loading !== null}
+                                        onClick={() =>
+                                            handleExport(period, "csv")
+                                        }
+                                        className={cn(
+                                            "h-8 px-2.5 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50",
+                                            "dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                                        )}
+                                    >
+                                        <FileSpreadsheet className="h-4 w-4" />
+                                        <span className="hidden sm:inline ml-1">
+                                            {loading === `${period}-csv`
+                                                ? "..."
+                                                : "CSV"}
+                                        </span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        disabled={loading !== null}
+                                        onClick={() =>
+                                            handleExport(period, "pdf")
+                                        }
+                                        className={cn(
+                                            "h-8 px-2.5 text-rose-700 hover:text-rose-800 hover:bg-rose-50",
+                                            "dark:text-rose-400 dark:hover:bg-rose-950/40"
+                                        )}
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                        <span className="hidden sm:inline ml-1">
+                                            {loading === `${period}-pdf`
+                                                ? "..."
+                                                : "PDF"}
+                                        </span>
+                                    </Button>
+                                </div>
+                            </div>
+                        )
+                    )}
+                </div>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {reports.map(({ period, label, description, icon: Icon }) => (
-                    <div
-                        key={period}
-                        className="group flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors hover:border-foreground/20 hover:bg-muted/40"
-                    >
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                                <Icon className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-sm font-medium leading-none">
-                                    {label}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1 truncate">
-                                    {description}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={loading !== null}
-                                onClick={() => handleExport(period, "csv")}
-                                className={cn(
-                                    "h-8 px-2.5 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50",
-                                    "dark:text-emerald-400 dark:hover:bg-emerald-950/40"
-                                )}
+            <div>
+                <h3 className="text-sm font-semibold">Custom reports</h3>
+                <p className="text-xs text-muted-foreground">
+                    Export your expense data per your need.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {reports.map(
+                        ({ period, label, description, icon: Icon }) => (
+                            <div
+                                key={period}
+                                className="group flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors hover:border-foreground/20 hover:bg-muted/40"
                             >
-                                <FileSpreadsheet className="h-4 w-4" />
-                                <span className="hidden sm:inline ml-1">
-                                    {loading === `${period}-csv`
-                                        ? "..."
-                                        : "CSV"}
-                                </span>
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={loading !== null}
-                                onClick={() => handleExport(period, "pdf")}
-                                className={cn(
-                                    "h-8 px-2.5 text-rose-700 hover:text-rose-800 hover:bg-rose-50",
-                                    "dark:text-rose-400 dark:hover:bg-rose-950/40"
-                                )}
-                            >
-                                <FileText className="h-4 w-4" />
-                                <span className="hidden sm:inline ml-1">
-                                    {loading === `${period}-pdf`
-                                        ? "..."
-                                        : "PDF"}
-                                </span>
-                            </Button>
-                        </div>
-                    </div>
-                ))}
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                        <Icon className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium leading-none">
+                                            {label}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                                            {description}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        disabled={loading !== null}
+                                        onClick={() =>
+                                            handleExport(period, "csv")
+                                        }
+                                        className={cn(
+                                            "h-8 px-2.5 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50",
+                                            "dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                                        )}
+                                    >
+                                        <FileSpreadsheet className="h-4 w-4" />
+                                        <span className="hidden sm:inline ml-1">
+                                            {loading === `${period}-csv`
+                                                ? "..."
+                                                : "CSV"}
+                                        </span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        disabled={loading !== null}
+                                        onClick={() =>
+                                            handleExport(period, "pdf")
+                                        }
+                                        className={cn(
+                                            "h-8 px-2.5 text-rose-700 hover:text-rose-800 hover:bg-rose-50",
+                                            "dark:text-rose-400 dark:hover:bg-rose-950/40"
+                                        )}
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                        <span className="hidden sm:inline ml-1">
+                                            {loading === `${period}-pdf`
+                                                ? "..."
+                                                : "PDF"}
+                                        </span>
+                                    </Button>
+                                </div>
+                            </div>
+                        )
+                    )}
+                </div>
             </div>
         </div>
     )
