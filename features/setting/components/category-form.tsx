@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 import AppDialog from "@/components/shared/app-dialog"
+import { toast } from "sonner"
 const categorySchema = z.object({
     name: z.string().min(1, "Category name is required"),
 })
@@ -35,9 +36,15 @@ export function CategoryDialog({
     })
 
     const handleSubmit = form.handleSubmit(async (values) => {
-        await onSubmit(values)
-        form.reset()
-        setOpen(false)
+        try {
+            await onSubmit(values)
+            form.reset()
+            setOpen(false)
+        } catch (error) {
+            toast.error(
+                error instanceof Error ? error.message : "Something went wrong."
+            )
+        }
     })
 
     return (
