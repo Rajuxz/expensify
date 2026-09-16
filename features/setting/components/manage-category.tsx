@@ -1,3 +1,5 @@
+"use client"
+
 import { createCategory, getCategories } from "@/actions/category"
 import {
     Card,
@@ -7,13 +9,15 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 
-import { toast } from "sonner"
 import useSWR, { mutate } from "swr"
+import { toast } from "sonner"
 import { CategoryItem } from "./category-item"
 import { CategoryDialog } from "./category-form"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+
 const VISIBLE_COUNT = 5
+
 const ManageCategory = () => {
     const { data: categories } = useSWR("categories", getCategories)
 
@@ -29,8 +33,7 @@ const ManageCategory = () => {
             toast.success("Category created.")
             mutate("categories")
         } else {
-            toast.error("Something went wrong.")
-            throw new Error("Failed to create category")
+            throw new Error(result.error ?? "Failed to create category")
         }
     }
 
@@ -43,11 +46,9 @@ const ManageCategory = () => {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-                {visibleCategories?.map((category) => {
-                    return (
-                        <CategoryItem key={category.id} category={category} />
-                    )
-                })}
+                {visibleCategories?.map((category) => (
+                    <CategoryItem key={category.id} category={category} />
+                ))}
                 {hasMore && (
                     <Button
                         variant="ghost"
