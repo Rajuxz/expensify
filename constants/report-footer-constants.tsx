@@ -1,11 +1,13 @@
 import { CalendarDays, CalendarRange, Sun, TrendingUp } from "lucide-react"
 export type Period = "daily" | "weekly" | "monthly" | "yearly"
 
+export type CustomReportPeriod = "single-day" | "date-range"
+
 export const reports: {
     period: Period
     label: string
     description: string
-    icon: React.ElementType
+    icon: React.ComponentType<{ className?: string }>
 }[] = [
     {
         period: "daily",
@@ -30,5 +32,25 @@ export const reports: {
         label: "Yearly",
         description: "Full year summary",
         icon: TrendingUp,
+    },
+]
+
+export const customReports: {
+    period: CustomReportPeriod
+    label: string
+    description: string
+    icon: React.ComponentType<{ className?: string }>
+}[] = [
+    {
+        period: "single-day",
+        label: "One Day",
+        description: "Custom day's breakdown",
+        icon: CalendarDays,
+    },
+    {
+        period: "date-range",
+        label: "Custom Day",
+        description: "Pick 2–15 days for a combined report",
+        icon: CalendarRange,
     },
 ]
