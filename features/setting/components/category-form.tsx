@@ -73,6 +73,7 @@ export function CategoryDialog({
                     </p>
                 )}
                 <Button
+                    type="submit"
                     variant="ghost"
                     size="icon"
                     className="bg-black w-fit mt-3 px-3 text-white cursor-pointer hover:bg-black hover:text-white focus:bg-black focus:text-white"
