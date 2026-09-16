@@ -40,7 +40,6 @@ async function main() {
                 const newCategory = await tx.categories.create({
                     data: {
                         name: oldCategory.name,
-                        icon: oldCategory.icon,
                         color: oldCategory.color,
                         userId: user.id,
                     },

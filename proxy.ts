@@ -1,10 +1,15 @@
 import { clerkMiddleware } from "@clerk/nextjs/server"
+import { NextResponse } from "next/server"
 
 export default clerkMiddleware(async (auth, req) => {
     const pathname = req.nextUrl.pathname
-    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
-        const { isAuthenticated, redirectToSignIn } = await auth()
+    const { isAuthenticated, redirectToSignIn } = await auth()
 
+    if (pathname === "/" && isAuthenticated) {
+        return NextResponse.redirect(new URL("/dashboard", req.url))
+    }
+
+    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
         if (!isAuthenticated) return redirectToSignIn()
     }
 })
