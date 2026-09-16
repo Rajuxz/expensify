@@ -2,7 +2,7 @@
 import requireUser from "@/lib/auth/getCurrentUser"
 import { Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
-import { revalidateTag, unstable_cache } from "next/cache"
+import { revalidateTag, unstable_cache, updateTag } from "next/cache"
 
 export const getCachedCategories = unstable_cache(
     async (userId: string) => {
@@ -26,18 +26,42 @@ export async function createCategory(name: string) {
     if (!name.trim()) {
         return { success: false, error: "Category name is required" }
     }
-
     try {
+        const categoryExists = await prisma.categories.findFirst({
+            where: {
+                name: {
+                    equals: name,
+                    mode: "insensitive",
+                },
+                userId: user.id,
+            },
+        })
+        if (categoryExists) {
+            return {
+                success: false,
+                error: "Category already exists.",
+            }
+        }
         const category = await prisma.categories.create({
             data: {
                 name: name.trim(),
                 userId: user.id,
             },
         })
-        revalidateTag("categories", { expire: 0 })
+        updateTag("categories")
         return { success: true, data: category }
     } catch (error) {
-        return { success: false, error: "Category already exists." }
+        if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+        ) {
+            return { success: false, error: "Category already exists." }
+        }
+        console.error("createCategory failed:", error)
+        return {
+            success: false,
+            error: "Something went wrong. Please try again.",
+        }
     }
 }
 
