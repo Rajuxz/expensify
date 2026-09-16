@@ -228,15 +228,21 @@ export async function getWeeklySpendingTrend(weekStart: Date) {
     return totals
 }
 
-// to calculate total cash spending and online spending.
-export async function getCashVsOnlineSplit() {
+// Calculate cash and online spending for a month (month: 0 = January).
+export async function getCashVsOnlineSplit(
+    year = new Date().getFullYear(),
+    month = new Date().getMonth()
+) {
     const user = await requireUser()
+    const startOfMonth = new Date(year, month, 1)
+    const startOfNextMonth = new Date(year, month + 1, 1)
 
     const result = await prisma.expenses.groupBy({
         by: ["transaction_type"],
         where: {
             userId: user.id,
             isDeleted: false,
+            expense_date: { gte: startOfMonth, lt: startOfNextMonth },
         },
         _sum: {
             amount: true,
