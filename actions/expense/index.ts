@@ -2,33 +2,43 @@
 import requireUser from "@/lib/auth/getCurrentUser"
 import { Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
-import { ExpenseFormData } from "@/schemas/expense"
+import { expenseSchema, ExpenseFormData } from "@/schemas/expense"
 import { Expense } from "@/types/expenseTableTypes"
-import { resolveMultipleLabels } from "@base-ui/react/internals/resolveValueLabel"
-import { currentUser } from "@clerk/nextjs/server"
-import { gte } from "zod"
+import { refresh } from "next/cache"
 
 export async function createExpense(input: ExpenseFormData) {
     const user = await requireUser()
+    const parsed = expenseSchema.safeParse(input)
+    if (!parsed.success) {
+        return { success: false, error: "Invalid expense details" }
+    }
+
     try {
+        const category = await prisma.categories.findFirst({
+            where: { id: parsed.data.categoryId, userId: user.id },
+            select: { id: true },
+        })
+        if (!category) {
+            return { success: false, error: "Invalid category" }
+        }
+
         const expense = await prisma.expenses.create({
             data: {
-                title: input.title,
-                amount: input.amount,
-                description: input.description,
-                expense_date: input.expense_date ?? new Date(),
-                transaction_type: input.transaction_type,
-                user: { connect: { id: user.id } },
-                category: { connect: { id: input.categoryId } },
+                title: parsed.data.title,
+                amount: parsed.data.amount,
+                description: parsed.data.description,
+                expense_date: parsed.data.expense_date,
+                transaction_type: parsed.data.transaction_type,
+                userId: user.id,
+                categoryId: category.id,
             },
         })
 
+        refresh()
         return { success: true, data: expense }
     } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            return { success: false, error: "Invalid category or user" }
-        }
-        throw error
+        console.error("Failed to create expense:", error)
+        return { success: false, error: "Failed to create expense" }
     }
 }
 

@@ -46,6 +46,7 @@ export function CategoryDialog({
             onOpenChange={setOpen}
             trigger={
                 <Button
+                    type="submit"
                     variant="ghost"
                     size="icon"
                     className="cursor-pointer text-green-600 hover:text-green-700 transition-all duration-150"

@@ -21,7 +21,6 @@ import {
     PopoverContent,
 } from "@/components/ui/popover"
 import { ExpenseFormData, expenseSchema } from "@/schemas/expense"
-import { useState } from "react"
 import { createExpense, updateExpenses } from "@/actions/expense"
 import { toast } from "sonner"
 import { Expense } from "@/types/expenseTableTypes"
@@ -83,7 +82,9 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
                 form.reset()
                 toast.success("Expense added successfully.")
             }
-        } catch (error) {}
+        } catch {
+            toast.error("Failed to save expense")
+        }
     }
 
     return (
