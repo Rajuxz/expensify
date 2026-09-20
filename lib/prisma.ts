@@ -4,6 +4,8 @@ import { PrismaClient } from "./generated/prisma/client"
 
 const connectionString = `${process.env.DATABASE_URL}`
 
+console.log("🔍 DB host in use:", new URL(connectionString).hostname)
+
 const globalForPrisma = globalThis as unknown as {
     prisma: PrismaClient | undefined
 }
