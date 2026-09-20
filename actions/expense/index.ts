@@ -57,6 +57,36 @@ export async function updateExpenses(
     values: ExpenseFormData
 ) {
     try {
+        const user = await requireUser()
+
+        const existing = await prisma.expenses.findFirst({
+            where: {
+                userId: user.id,
+                id: expenseId,
+            },
+        })
+
+        if (!existing) {
+            return {
+                success: false,
+                error: "Expense not found.",
+            }
+        }
+
+        const category = await prisma.categories.findFirst({
+            where: {
+                id: existing.categoryId,
+                userId: user.id,
+            },
+        })
+
+        if (!category) {
+            return {
+                success: false,
+                error: "Invalid category Found.",
+            }
+        }
+
         const updatedExpense = await prisma.expenses.update({
             where: {
                 id: expenseId,
@@ -199,14 +229,46 @@ export async function getWeeklyExpense(from: Date, to: Date) {
 
 //to soft delete expense.
 export async function softDeleteExpense(expenseId: string) {
-    return await prisma.expenses.update({
-        where: {
-            id: expenseId,
-        },
-        data: {
-            isDeleted: true,
-        },
-    })
+    try {
+        const user = await requireUser()
+        //find if the this expense belongs to current user.
+        const existingExpense = await prisma.expenses.findFirst({
+            where: {
+                userId: user.id,
+                id: expenseId,
+            },
+        })
+
+        //no expense found
+        if (!existingExpense) {
+            return {
+                success: false,
+                error: "Couldn't find expense.",
+            }
+        }
+
+        await prisma.expenses.update({
+            where: {
+                id: expenseId,
+            },
+            data: {
+                isDeleted: true,
+                updated_at: new Date(),
+            },
+        })
+
+        //update either resolves or rejected. So, wrapping it inside if-else would be dead block
+        return {
+            success: true,
+            data: "Expense deleted successfully.",
+        }
+    } catch (error) {
+        console.error(`[ERROR] Deleting Expense: ${error}`)
+        return {
+            success: false,
+            error: "Failed to delete expense",
+        }
+    }
 }
 
 // Get spending trends for week

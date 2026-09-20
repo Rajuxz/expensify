@@ -8,8 +8,9 @@ import { z } from "zod"
 import { Plus, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
 import AppDialog from "@/components/shared/app-dialog"
+import { toast } from "sonner"
+
 const categorySchema = z.object({
     name: z.string().min(1, "Category name is required"),
 })
@@ -35,9 +36,15 @@ export function CategoryDialog({
     })
 
     const handleSubmit = form.handleSubmit(async (values) => {
-        await onSubmit(values)
-        form.reset()
-        setOpen(false)
+        try {
+            await onSubmit(values)
+            form.reset()
+            setOpen(false)
+        } catch (error) {
+            toast.error(
+                error instanceof Error ? error.message : "Something went wrong."
+            )
+        }
     })
 
     return (
@@ -46,7 +53,7 @@ export function CategoryDialog({
             onOpenChange={setOpen}
             trigger={
                 <Button
-                    type="submit"
+                    type="button"
                     variant="ghost"
                     size="icon"
                     className="cursor-pointer text-green-600 hover:text-green-700 transition-all duration-150"
@@ -73,6 +80,7 @@ export function CategoryDialog({
                     </p>
                 )}
                 <Button
+                    type="submit"
                     variant="ghost"
                     size="icon"
                     className="bg-black w-fit mt-3 px-3 text-white cursor-pointer hover:bg-black hover:text-white focus:bg-black focus:text-white"
