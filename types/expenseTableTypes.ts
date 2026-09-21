@@ -11,5 +11,5 @@ export type Expense = {
     category: {
         id: string
         name: string
-    }
+    } | null
 }
