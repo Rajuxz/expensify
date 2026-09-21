@@ -6,11 +6,13 @@ import { revalidateTag, unstable_cache, updateTag } from "next/cache"
 
 export const getCachedCategories = unstable_cache(
     async (userId: string) => {
-        return prisma.categories.findMany({
+        const categories = await prisma.categories.findMany({
             where: { userId },
-            select: { id: true, name: true, color: false },
+            select: { id: true, name: true },
             orderBy: { name: "asc" },
         })
+
+        return [{ id: null, name: "Uncategorized" }, ...categories]
     },
     ["categories"],
     { revalidate: 43200, tags: ["categories"] }
