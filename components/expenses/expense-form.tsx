@@ -46,7 +46,7 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
             description: initialData?.description ?? "",
             expense_date: initialData?.expense_date ?? new Date(),
             transaction_type: initialData?.transaction_type ?? "CASH",
-            categoryId: initialData?.category.id ?? null,
+            categoryId: initialData?.category?.id ?? null,
         },
     })
     async function handleCreateCategory(values: { name: string }) {
