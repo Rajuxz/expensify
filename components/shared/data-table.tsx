@@ -37,7 +37,7 @@ type DataTableProps<TData, TValue> = {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
 }
-const paymentType = ["", "CASH", "ONLINE"]
+const paymentType = ["CASH", "ONLINE"]
 
 export function DataTable<TData, TValue>({
     columns,
