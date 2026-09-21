@@ -15,7 +15,7 @@ export async function createExpense(input: ExpenseFormData) {
 
     try {
         const category = await prisma.categories.findFirst({
-            where: { id: parsed.data.categoryId, userId: user.id },
+            where: { id: parsed.data.categoryId ?? undefined, userId: user.id },
             select: { id: true },
         })
         if (!category) {
@@ -30,7 +30,7 @@ export async function createExpense(input: ExpenseFormData) {
                 expense_date: parsed.data.expense_date,
                 transaction_type: parsed.data.transaction_type,
                 userId: user.id,
-                categoryId: category.id,
+                categoryId: category.id ?? undefined,
             },
         })
 
@@ -98,7 +98,7 @@ export async function updateExpenses(
                 description: values.description,
                 expense_date: values.expense_date,
                 transaction_type: values.transaction_type,
-                categoryId: values.categoryId,
+                categoryId: values.categoryId ?? undefined,
                 updated_at: new Date(),
             },
 
