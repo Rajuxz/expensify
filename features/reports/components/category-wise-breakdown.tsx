@@ -1,6 +1,6 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 type CategoryBreakdownItem = {
-    categoryId: string
+    categoryId: string | null
     name: string
     total: number
 }
@@ -39,7 +39,11 @@ const CategoryWiseBreakdown = ({
                                 key={item.name}
                                 className="flex justify-between text-sm"
                             >
-                                <span>{item.name}</span>
+                                <span>
+                                    {item.name === null
+                                        ? "Uncategorized"
+                                        : item.name}
+                                </span>
                                 <span className="font-medium">
                                     Rs. {item.total.toLocaleString()}
                                 </span>
