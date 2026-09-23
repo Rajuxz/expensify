@@ -39,7 +39,8 @@ const ManageCategory = () => {
     }
 
     return (
-        <Card>
+        // target of the "Manage" link in the expense form; offset for sticky navbar
+        <Card id="categories" className="scroll-mt-20">
             <CardHeader>
                 <CardTitle>Categories</CardTitle>
                 <CardDescription>

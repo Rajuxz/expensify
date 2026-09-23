@@ -25,8 +25,15 @@ export async function getCategories() {
 
 export async function createCategory(name: string) {
     const user = await requireUser()
-    if (!name.trim()) {
+    name = name.trim()
+    if (!name) {
         return { success: false, error: "Category name is required" }
+    }
+    if (name.length > 50) {
+        return { success: false, error: "Category name is too long." }
+    }
+    if (name.toLowerCase() === "uncategorized") {
+        return { success: false, error: `"Uncategorized" is reserved.` }
     }
     try {
         const categoryExists = await prisma.categories.findFirst({
