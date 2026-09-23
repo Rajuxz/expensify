@@ -92,7 +92,6 @@ export async function updateCategory(name: string, id: string) {
         return { success: false, error: "Cannot update category." }
     }
 }
-
 export async function deleteCategory(id: string) {
     const user = await requireUser()
     if (!id) {
@@ -100,33 +99,30 @@ export async function deleteCategory(id: string) {
     }
 
     try {
-        const recordCount = await prisma.expenses.count({
-            where: { userId: user.id, categoryId: id, isDeleted: false },
+        const category = await prisma.categories.findUnique({
+            where: { id },
         })
 
-        if (recordCount > 0) {
+        if (!category || category.userId !== user.id) {
             return {
                 success: false,
-                error: "There are expenses available. Please recategorized first.",
+                error: "You cannot delete the category.",
             }
-        } else {
-            const category = await prisma.categories.findUnique({
-                where: { id },
-            })
-            if (!category || category.userId !== user.id) {
-                return {
-                    success: false,
-                    error: "You cannot delete the category.",
-                }
-            }
+        }
 
-            await prisma.categories.delete({ where: { id } })
-            revalidateTag("categories", { expire: 0 })
+        await prisma.$transaction([
+            prisma.expenses.updateMany({
+                where: { userId: user.id, categoryId: id },
+                data: { categoryId: null },
+            }),
+            prisma.categories.delete({ where: { id } }),
+        ])
 
-            return {
-                success: true,
-                error: "Category deleted successfully.",
-            }
+        revalidateTag("categories", { expire: 0 })
+
+        return {
+            success: true,
+            error: "Category deleted successfully.",
         }
     } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -135,5 +131,6 @@ export async function deleteCategory(id: string) {
             }
             return { success: false, error: "Cannot Delete category." }
         }
+        return { success: false, error: "Cannot Delete category." }
     }
 }
