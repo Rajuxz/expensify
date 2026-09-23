@@ -5,6 +5,7 @@ import {
     PieChart,
     Settings,
     DollarSignIcon,
+    ShieldCheck,
 } from "lucide-react"
 
 export const navItems = [
@@ -14,3 +15,10 @@ export const navItems = [
     { label: "Reports", href: "/dashboard/reports", icon: PieChart },
     { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
+
+// Shown only to ADMIN / SUPER_ADMIN (decided server-side in the dashboard layout).
+export const adminNavItem = {
+    label: "Admin",
+    href: "/dashboard/admin",
+    icon: ShieldCheck,
+}

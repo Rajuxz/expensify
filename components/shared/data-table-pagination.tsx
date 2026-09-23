@@ -62,13 +62,15 @@ export function DataTablePagination<TData>({ table }: { table: Table<TData> }) {
     ]
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 py-4 text-sm">
-            <span className="text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 py-4 text-sm">
+            <span className="hidden text-muted-foreground sm:inline">
                 Showing {firstRow}–{lastRow} of {rowCount}
             </span>
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-end">
                 <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Rows per page</span>
+                    <span className="hidden text-muted-foreground sm:inline">
+                        Rows per page
+                    </span>
                     <Select
                         value={pageSize}
                         onValueChange={(value) => {
@@ -89,7 +91,11 @@ export function DataTablePagination<TData>({ table }: { table: Table<TData> }) {
                     </Select>
                 </div>
                 <span>
-                    Page {pageCount ? pageIndex + 1 : 0} of {pageCount}
+                    <span className="hidden sm:inline">Page </span>
+                    {pageCount ? pageIndex + 1 : 0}
+                    <span className="hidden sm:inline"> of </span>
+                    <span className="sm:hidden"> / </span>
+                    {pageCount}
                 </span>
                 <div className="flex items-center gap-1">
                     {navButtons.map(({ label, Icon, go, enabled }) => (
@@ -97,6 +103,14 @@ export function DataTablePagination<TData>({ table }: { table: Table<TData> }) {
                             key={label}
                             variant="outline"
                             size="icon-sm"
+                            // phones: hide first/last, enlarge prev/next
+                            // to a finger-sized tap target
+                            className={
+                                label.startsWith("First") ||
+                                label.startsWith("Last")
+                                    ? "hidden sm:inline-flex"
+                                    : "size-9 sm:size-7"
+                            }
                             onClick={go}
                             disabled={!enabled}
                         >

@@ -31,6 +31,7 @@ import { BulkEditControls } from "@/components/expenses/bulk-edit-controls"
 import { CategoryCellEditor } from "@/components/expenses/category-cell-editor"
 import { BulkDeleteButton } from "@/components/expenses/bulk-delete-button"
 import { UncategorizedBanner } from "@/components/expenses/uncategorized-banner"
+import { ExpenseCardList } from "@/components/expenses/expense-card-list"
 import { Button } from "@/components/ui/button"
 import { DataTableFilters } from "./data-table-filters"
 import { DataTablePagination } from "./data-table-pagination"
@@ -120,22 +121,25 @@ export function DataTable<TData extends Expense, TValue>({
         table.firstPage()
     }
 
-    function renderCell(cell: Cell<TData, unknown>, rowIndex: number) {
-        const expense = cell.row.original
+    // shared by the desktop table and the mobile card list
+    function renderCategoryEditor(expense: TData) {
+        return (
+            <CategoryCellEditor
+                categories={categories}
+                value={bulk.getCategoryId(expense)}
+                onChange={(id) => bulk.pickCategory(expense, id)}
+                loading={categoriesLoading}
+                disabled={bulk.saving}
+            />
+        )
+    }
 
+    function renderCell(cell: Cell<TData, unknown>, rowIndex: number) {
         if (cell.column.id === "id") {
             return pageIndex * pageSize + rowIndex + 1
         }
         if (bulk.isEditing && cell.column.id === "category") {
-            return (
-                <CategoryCellEditor
-                    categories={categories}
-                    value={bulk.getCategoryId(expense)}
-                    onChange={(id) => bulk.pickCategory(expense, id)}
-                    loading={categoriesLoading}
-                    disabled={bulk.saving}
-                />
-            )
+            return renderCategoryEditor(cell.row.original)
         }
         return flexRender(cell.column.columnDef.cell, cell.getContext())
     }
@@ -182,7 +186,21 @@ export function DataTable<TData extends Expense, TValue>({
                     onPeriodDaysChange={setPeriodDays}
                 />
             </div>
-            <div className="overflow-x-auto rounded-md border">
+            {/* phones: cards. Same table state, different layout. */}
+            <div className="md:hidden">
+                <ExpenseCardList
+                    table={table}
+                    renderCategoryEditor={
+                        bulk.isEditing ? renderCategoryEditor : null
+                    }
+                    isChanged={bulk.isChanged}
+                    totalLabel={`Total (${paymentTypeFilter || "All"})`}
+                    total={filteredTotal}
+                />
+            </div>
+
+            {/* md and up: the full table */}
+            <div className="hidden overflow-x-auto rounded-md border md:block">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (

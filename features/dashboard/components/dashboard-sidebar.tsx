@@ -1,5 +1,5 @@
 "use client"
-import { navItems } from "@/constants/sidebar-constants"
+import { adminNavItem, navItems } from "@/constants/sidebar-constants"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Wallet } from "lucide-react"
@@ -19,15 +19,18 @@ import {
 function NavLinks({
     collapsed,
     onNavigate,
+    showAdminLink,
 }: {
     collapsed: boolean
     onNavigate?: () => void
+    showAdminLink: boolean
 }) {
     const pathname = usePathname()
+    const items = showAdminLink ? [...navItems, adminNavItem] : navItems
 
     return (
         <nav className="flex flex-col gap-1 px-2">
-            {navItems.map(({ label, href, icon: Icon }) => {
+            {items.map(({ label, href, icon: Icon }) => {
                 const isActive = pathname === href
 
                 const link = (
@@ -69,10 +72,12 @@ export function DashboardSidebar({
     collapsed,
     mobileOpen,
     onMobileOpenChange,
+    showAdminLink,
 }: {
     collapsed: boolean
     mobileOpen: boolean
     onMobileOpenChange: (open: boolean) => void
+    showAdminLink: boolean
 }) {
     return (
         <>
@@ -99,7 +104,10 @@ export function DashboardSidebar({
                 </div>
 
                 <div className="flex-1 overflow-y-auto py-3">
-                    <NavLinks collapsed={collapsed} />
+                    <NavLinks
+                        collapsed={collapsed}
+                        showAdminLink={showAdminLink}
+                    />
                 </div>
             </aside>
 
@@ -117,6 +125,7 @@ export function DashboardSidebar({
                         <NavLinks
                             collapsed={false}
                             onNavigate={() => onMobileOpenChange(false)}
+                            showAdminLink={showAdminLink}
                         />
                     </div>
                 </SheetContent>
