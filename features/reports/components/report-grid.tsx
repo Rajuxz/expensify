@@ -18,7 +18,7 @@ export function ReportGrid({
         <div>
             <h3 className="text-sm font-semibold">{title}</h3>
             <p className="text-xs text-muted-foreground">{description}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {reports.map((report) => (
                     <ReportRow
                         key={report.period}

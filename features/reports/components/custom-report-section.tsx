@@ -1,9 +1,9 @@
-// features/reports/components/custom-reports-section.tsx
 "use client"
 
 import { useState } from "react"
-import { format, subDays } from "date-fns"
+import { differenceInCalendarDays, format, startOfToday } from "date-fns"
 import type { DateRange } from "react-day-picker"
+import { ChevronDown } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import {
     Popover,
@@ -11,14 +11,16 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
     customReports,
     type CustomReportPeriod,
 } from "@/constants/report-footer-constants"
+import type { OnExport, ReportParams } from "@/lib/reports/pdf-export-config"
+import ExportButtons from "./export-buttons"
 
-import type { OnExport } from "@/lib/reports/pdf-export-config"
-
-type ExportRange = { from: Date; to: Date }
+const MIN_RANGE_DAYS = 2
+const MAX_RANGE_DAYS = 15
 
 type CustomReportsSectionProps = {
     title: string
@@ -27,18 +29,14 @@ type CustomReportsSectionProps = {
     onExport: OnExport
 }
 
-const today = new Date()
-today.setHours(0, 0, 0, 0)
-const yesterday = subDays(today, 1)
-
-function isValidRange(range: DateRange | undefined) {
-    if (!range?.from || !range?.to) return false
-    const days =
-        Math.round((range.to.getTime() - range.from.getTime()) / 86_400_000) + 1
-    return days >= 2 && days <= 15
+function rangeDays(range: DateRange | undefined) {
+    if (!range?.from || !range?.to) return 0
+    return differenceInCalendarDays(range.to, range.from) + 1
 }
 
 function CustomReportsSection({
+    title,
+    description,
     loading,
     onExport,
 }: CustomReportsSectionProps) {
@@ -47,113 +45,186 @@ function CustomReportsSection({
     )
     const [singleDay, setSingleDay] = useState<Date | undefined>()
     const [range, setRange] = useState<DateRange | undefined>()
+    const today = startOfToday()
 
-    const handleExport = (period: CustomReportPeriod, fmt: "csv" | "pdf") => {
-        if (period === "single-day" && singleDay) {
-            onExport(period, fmt, { date: singleDay })
+    const days = rangeDays(range)
+    const rangeValid = days >= MIN_RANGE_DAYS && days <= MAX_RANGE_DAYS
+
+    // what the card shows, what the popover footer says, and what gets exported
+    const state: Record<
+        CustomReportPeriod,
+        {
+            summary: string | null
+            hint: string
+            params: ReportParams | null
+            hasSelection: boolean
         }
-        if (period === "date-range" && isValidRange(range)) {
-            onExport(period, fmt, { from: range!.from!, to: range!.to! })
-        }
+    > = {
+        "single-day": {
+            summary: singleDay ? format(singleDay, "EEE, MMM d, yyyy") : null,
+            hint: singleDay
+                ? format(singleDay, "MMMM d, yyyy")
+                : "Pick any day up to today",
+            params: singleDay ? { date: singleDay } : null,
+            hasSelection: !!singleDay,
+        },
+        "date-range": {
+            summary:
+                range?.from && range.to
+                    ? `${format(range.from, "MMM d")} – ${format(range.to, "MMM d, yyyy")}`
+                    : null,
+            hint: !range?.from
+                ? `Pick a start and end date (${MIN_RANGE_DAYS}–${MAX_RANGE_DAYS} days)`
+                : !range.to
+                  ? "Now pick an end date"
+                  : rangeValid
+                    ? `${days} days selected`
+                    : `${days} ${days === 1 ? "day" : "days"} selected — choose ${MIN_RANGE_DAYS}–${MAX_RANGE_DAYS}`,
+            params:
+                rangeValid && range?.from && range.to
+                    ? { from: range.from, to: range.to }
+                    : null,
+            hasSelection: !!range?.from,
+        },
+    }
+
+    async function handleExport(
+        period: CustomReportPeriod,
+        fmt: "csv" | "pdf"
+    ) {
+        const params = state[period].params
+        if (!params) return
+        // keep the popover open (showing progress) until the export finishes
+        await onExport(period, fmt, params)
         setOpenPeriod(null)
     }
 
     return (
         <div>
-            <h3 className="text-sm font-semibold">Custom Reports</h3>
-            <p className="text-xs text-muted-foreground">
-                Export a report for a specific day or a custom range
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            <p className="text-xs text-muted-foreground">{description}</p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {customReports.map((report) => {
                     const Icon = report.icon
-                    const isSingleDay = report.period === "single-day"
-                    const canExport = isSingleDay
-                        ? !!singleDay
-                        : isValidRange(range)
+                    const { summary, hint, params, hasSelection } =
+                        state[report.period]
+                    const isOpen = openPeriod === report.period
 
                     return (
                         <Popover
                             key={report.period}
-                            open={openPeriod === report.period}
-                            onOpenChange={(open) =>
+                            open={isOpen}
+                            onOpenChange={(open) => {
+                                // don't let the popover close mid-export
+                                if (!open && loading) return
                                 setOpenPeriod(open ? report.period : null)
-                            }
+                            }}
                         >
                             <PopoverTrigger
                                 render={
                                     <button
                                         type="button"
-                                        className="flex items-center gap-3 rounded-lg border p-3 text-left hover:bg-accent"
+                                        className={cn(
+                                            "group flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:border-foreground/20 hover:bg-muted/40",
+                                            isOpen &&
+                                                "border-foreground/20 bg-muted/40"
+                                        )}
                                     >
-                                        <Icon className="size-5 text-muted-foreground shrink-0" />
-                                        <div>
-                                            <p className="text-sm font-medium">
+                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                            <Icon className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium leading-none">
                                                 {report.label}
                                             </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {report.description}
+                                            <p
+                                                className={cn(
+                                                    "mt-1 truncate text-xs",
+                                                    summary
+                                                        ? "font-medium text-foreground"
+                                                        : "text-muted-foreground"
+                                                )}
+                                            >
+                                                {summary ?? report.description}
                                             </p>
                                         </div>
+                                        <ChevronDown
+                                            className={cn(
+                                                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                                                isOpen && "rotate-180"
+                                            )}
+                                        />
                                     </button>
                                 }
                             />
                             <PopoverContent
-                                className="w-auto p-3"
+                                className="w-auto p-0"
                                 align="start"
                             >
-                                {isSingleDay ? (
+                                {report.period === "single-day" ? (
                                     <Calendar
                                         mode="single"
                                         selected={singleDay}
                                         onSelect={setSingleDay}
-                                        disabled={{ after: yesterday }}
+                                        defaultMonth={singleDay}
+                                        disabled={{ after: today }}
+                                        endMonth={today}
                                     />
                                 ) : (
-                                    <>
-                                        <Calendar
-                                            mode="range"
-                                            selected={range}
-                                            onSelect={setRange}
-                                            disabled={{ after: today }}
-                                            min={2}
-                                            max={15}
-                                            numberOfMonths={2}
-                                        />
-                                        <p className="text-xs text-muted-foreground pt-2">
-                                            {range?.from && range?.to
-                                                ? `${format(range.from, "MMM d")} – ${format(range.to, "MMM d")}`
-                                                : "Select 2–15 days"}
-                                        </p>
-                                    </>
+                                    <Calendar
+                                        mode="range"
+                                        selected={range}
+                                        onSelect={setRange}
+                                        defaultMonth={
+                                            range?.from ??
+                                            new Date(
+                                                today.getFullYear(),
+                                                today.getMonth() - 1
+                                            )
+                                        }
+                                        disabled={{ after: today }}
+                                        endMonth={today}
+                                        numberOfMonths={2}
+                                    />
                                 )}
 
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={
-                                            !canExport ||
-                                            loading === report.period
-                                        }
-                                        onClick={() =>
-                                            handleExport(report.period, "csv")
-                                        }
+                                <div className="flex items-center justify-between gap-3 border-t px-3 py-2">
+                                    <p
+                                        className={cn(
+                                            "text-xs",
+                                            summary && !params
+                                                ? "text-destructive"
+                                                : "text-muted-foreground"
+                                        )}
                                     >
-                                        CSV
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        disabled={
-                                            !canExport ||
-                                            loading === report.period
-                                        }
-                                        onClick={() =>
-                                            handleExport(report.period, "pdf")
-                                        }
-                                    >
-                                        PDF
-                                    </Button>
+                                        {hint}
+                                    </p>
+                                    <div className="flex items-center gap-1">
+                                        {hasSelection && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-2 text-xs"
+                                                disabled={loading !== null}
+                                                onClick={() =>
+                                                    report.period ===
+                                                    "single-day"
+                                                        ? setSingleDay(
+                                                              undefined
+                                                          )
+                                                        : setRange(undefined)
+                                                }
+                                            >
+                                                Clear
+                                            </Button>
+                                        )}
+                                        <ExportButtons
+                                            period={report.period}
+                                            loading={loading}
+                                            onExport={handleExport}
+                                            disabled={!params}
+                                        />
+                                    </div>
                                 </div>
                             </PopoverContent>
                         </Popover>

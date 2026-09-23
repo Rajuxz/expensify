@@ -19,7 +19,8 @@ export const columns: ColumnDef<Expense>[] = [
     },
 
     {
-        accessorKey: "category.name",
+        id: "category",
+        accessorFn: (row) => row.category?.name ?? "Uncategorized",
         header: "Category",
         cell: ({ row }) => {
             const categoryName = row.original.category?.name
