@@ -1,7 +1,7 @@
 // category-dialog.tsx
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -35,10 +35,15 @@ export function CategoryDialog({
         defaultValues: { name: category?.name ?? "" },
     })
 
+    useEffect(() => {
+        if (open) {
+            form.reset({ name: category?.name ?? "" })
+        }
+    }, [open, category?.name, form])
+
     const handleSubmit = form.handleSubmit(async (values) => {
         try {
             await onSubmit(values)
-            form.reset()
             setOpen(false)
         } catch (error) {
             toast.error(
@@ -82,7 +87,7 @@ export function CategoryDialog({
                 <Button
                     type="submit"
                     variant="ghost"
-                    size="icon"
+                    size="sm"
                     className="bg-black w-fit mt-3 px-3 text-white cursor-pointer hover:bg-black hover:text-white focus:bg-black focus:text-white"
                     disabled={form.formState.isSubmitting}
                 >
