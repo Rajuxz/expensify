@@ -48,7 +48,7 @@ model Expenses {
   updated_at       DateTime?
   user             Users            @relation(fields: [userId], references: [id])
   userId           String           @db.Uuid
-  category         Categories       @relation(fields: [categoryId], references: [id])
-  categoryId       String           @db.Uuid
+  category         Categories?      @relation(fields: [categoryId], references: [id])
+  categoryId       String?          @db.Uuid
   isDeleted        Boolean          @default(false)
 }

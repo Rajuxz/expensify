@@ -14,13 +14,12 @@ export async function createExpense(input: ExpenseFormData) {
     }
 
     try {
-        const category = await prisma.categories.findFirst({
-            where: { id: parsed.data.categoryId, userId: user.id },
-            select: { id: true },
-        })
-        if (!category) {
-            return { success: false, error: "Invalid category" }
-        }
+        const category = parsed.data.categoryId
+            ? await prisma.categories.findFirst({
+                  where: { id: parsed.data.categoryId, userId: user.id },
+                  select: { id: true },
+              })
+            : null
 
         const expense = await prisma.expenses.create({
             data: {
@@ -30,7 +29,7 @@ export async function createExpense(input: ExpenseFormData) {
                 expense_date: parsed.data.expense_date,
                 transaction_type: parsed.data.transaction_type,
                 userId: user.id,
-                categoryId: category.id,
+                categoryId: category?.id ?? null,
             },
         })
 
@@ -60,64 +59,42 @@ export async function updateExpenses(
         const user = await requireUser()
 
         const existing = await prisma.expenses.findFirst({
-            where: {
-                userId: user.id,
-                id: expenseId,
-            },
+            where: { userId: user.id, id: expenseId },
         })
 
         if (!existing) {
-            return {
-                success: false,
-                error: "Expense not found.",
-            }
+            return { success: false, error: "Expense not found." }
         }
 
-        const category = await prisma.categories.findFirst({
-            where: {
-                id: existing.categoryId,
-                userId: user.id,
-            },
-        })
+        const category = values.categoryId
+            ? await prisma.categories.findFirst({
+                  where: { id: values.categoryId, userId: user.id },
+                  select: { id: true },
+              })
+            : null
 
-        if (!category) {
-            return {
-                success: false,
-                error: "Invalid category Found.",
-            }
+        if (values.categoryId && !category) {
+            return { success: false, error: "Invalid category." }
         }
 
         const updatedExpense = await prisma.expenses.update({
-            where: {
-                id: expenseId,
-            },
-
+            where: { id: expenseId },
             data: {
                 title: values.title,
                 amount: values.amount,
                 description: values.description,
                 expense_date: values.expense_date,
                 transaction_type: values.transaction_type,
-                categoryId: values.categoryId,
+                categoryId: category?.id ?? null,
                 updated_at: new Date(),
             },
-
-            include: {
-                category: true,
-            },
+            include: { category: true },
         })
 
-        return {
-            success: true,
-            data: updatedExpense,
-        }
+        return { success: true, data: updatedExpense }
     } catch (error) {
         console.error("Failed to update expense:", error)
-
-        return {
-            success: false,
-            error: "Failed to update expense",
-        }
+        return { success: false, error: "Failed to update expense" }
     }
 }
 
@@ -340,8 +317,12 @@ export async function getSpendingPerCategory() {
         },
     })
 
+    const categoryIds = result
+        .map((r) => r.categoryId)
+        .filter((id): id is string => id !== null)
+
     const categories = await prisma.categories.findMany({
-        where: { id: { in: result.map((cat) => cat.categoryId) } },
+        where: { id: { in: categoryIds } },
         select: { id: true, name: true },
     })
 
@@ -349,11 +330,12 @@ export async function getSpendingPerCategory() {
 
     return result.map((r) => ({
         categoryId: r.categoryId,
-        name: categoryMap.get(r.categoryId) ?? "Unknown",
+        name: r.categoryId
+            ? (categoryMap.get(r.categoryId) ?? "Unknown")
+            : "Uncategorized",
         total: Number(r._sum.amount ?? 0),
     }))
 }
-
 //Calculate average spending per day.
 export async function getAverageDailySpend(from: Date, to: Date) {
     const user = await requireUser()

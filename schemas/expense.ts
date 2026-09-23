@@ -23,7 +23,7 @@ export const expenseSchema = z.object({
 
     expense_date: z.date(),
     transaction_type: z.enum(["CASH", "ONLINE"]),
-    categoryId: z.string().check(z.uuid("Invalid category ID")),
+    categoryId: z.string().check(z.uuid("Invalid category ID")).nullish(),
 })
 
 // Infer the TypeScript type from the schema
