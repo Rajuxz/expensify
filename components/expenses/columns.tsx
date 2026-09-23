@@ -21,6 +21,10 @@ export const columns: ColumnDef<Expense>[] = [
     {
         accessorKey: "category.name",
         header: "Category",
+        cell: ({ row }) => {
+            const categoryName = row.original.category?.name
+            return categoryName ?? "Uncategorized"
+        },
     },
 
     {
