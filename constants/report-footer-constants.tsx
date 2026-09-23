@@ -44,12 +44,12 @@ export const customReports: {
     {
         period: "single-day",
         label: "One Day",
-        description: "Custom day's breakdown",
+        description: "Pick any day for its breakdown",
         icon: CalendarDays,
     },
     {
         period: "date-range",
-        label: "Custom Day",
+        label: "Date Range",
         description: "Pick 2–15 days for a combined report",
         icon: CalendarRange,
     },
