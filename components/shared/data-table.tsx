@@ -1,16 +1,9 @@
 "use client"
 import { useMemo, useState } from "react"
+import useSWR from "swr"
+import { endOfDay, isWithinInterval, startOfDay, subDays } from "date-fns"
 import {
-    Combobox,
-    ComboboxContent,
-    ComboboxEmpty,
-    ComboboxInput,
-    ComboboxItem,
-    ComboboxList,
-} from "@/components/ui/combobox"
-
-import { Field, FieldContent } from "@/components/ui/field"
-import {
+    Cell,
     ColumnDef,
     flexRender,
     getCoreRowModel,
@@ -29,34 +22,46 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
+import { getCategories } from "@/actions/category"
+import { Expense } from "@/types/expenseTableTypes"
+import { useBulkCategoryEdit } from "@/hooks/use-bulk-category-edit"
+import { BulkEditControls } from "@/components/expenses/bulk-edit-controls"
+import { CategoryCellEditor } from "@/components/expenses/category-cell-editor"
+import { DataTableFilters } from "./data-table-filters"
+import { DataTablePagination } from "./data-table-pagination"
 
-type DataTableProps<TData, TValue> = {
+type DataTableProps<TData extends Expense, TValue> = {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
 }
-const paymentType = ["CASH", "ONLINE"]
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends Expense, TValue>({
     columns,
     data,
 }: DataTableProps<TData, TValue>) {
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-    const [todayOnly, setTodayOnly] = useState(false)
+    const [periodDays, setPeriodDays] = useState(0)
+    const bulk = useBulkCategoryEdit(data)
+
+    const { data: categories = [], isLoading: categoriesLoading } = useSWR(
+        bulk.isEditing ? "categories" : null,
+        getCategories
+    )
 
     const tableData = useMemo(() => {
-        if (!todayOnly) return data
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
+        if (!periodDays) return data
+        // "Last 7 days" = today + the 6 days before it, whole calendar days
+        const from = startOfDay(subDays(new Date(), periodDays - 1))
+        const to = endOfDay(new Date())
+        return data.filter((row) =>
+            isWithinInterval(new Date(row.expense_date), {
+                start: from,
+                end: to,
+            })
+        )
+    }, [data, periodDays])
 
-        return data.filter((row) => {
-            const rowDate = new Date((row as any).expense_date)
-            rowDate.setHours(0, 0, 0, 0)
-            return rowDate.getTime() === today.getTime()
-        })
-    }, [data, todayOnly])
     const table = useReactTable({
         data: tableData,
         columns,
@@ -64,60 +69,63 @@ export function DataTable<TData, TValue>({
         getFilteredRowModel: getFilteredRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         onColumnFiltersChange: setColumnFilters,
+        getRowId: (row) => row.id,
+        // don't jump back to page 1 after a save refreshes the data
+        autoResetPageIndex: false,
         state: {
             columnFilters,
+            columnVisibility: { actions: !bulk.isEditing },
         },
     })
 
-    const filteredTotal = useMemo(() => {
-        return table
-            .getFilteredRowModel()
-            .rows.reduce(
-                (sum, row) => sum + (row.getValue("amount") as number),
-                0
-            )
-    }, [table.getFilteredRowModel().rows])
+    const { pageIndex, pageSize } = table.getState().pagination
+    const visibleColumnCount = table.getVisibleLeafColumns().length
+    const paymentTypeFilter = table
+        .getColumn("transaction_type")
+        ?.getFilterValue() as string | undefined
+    const filteredTotal = table
+        .getFilteredRowModel()
+        .rows.reduce((sum, row) => sum + Number(row.original.amount), 0)
 
-    const paymentTypeFilter =
-        (table.getColumn("transaction_type")?.getFilterValue() as string) ?? ""
+    function renderCell(cell: Cell<TData, unknown>, rowIndex: number) {
+        const expense = cell.row.original
+
+        if (cell.column.id === "id") {
+            return pageIndex * pageSize + rowIndex + 1
+        }
+        if (bulk.isEditing && cell.column.id === "category") {
+            return (
+                <CategoryCellEditor
+                    categories={categories}
+                    value={bulk.getCategoryId(expense)}
+                    onChange={(id) => bulk.pickCategory(expense, id)}
+                    loading={categoriesLoading}
+                    disabled={bulk.saving}
+                />
+            )
+        }
+        return flexRender(cell.column.columnDef.cell, cell.getContext())
+    }
 
     return (
         <div>
-            <div className="flex items-center justify-end py-1">
-                <Field orientation="horizontal">
-                    <Checkbox
-                        id="today-spending"
-                        checked={todayOnly}
-                        onCheckedChange={(checked) =>
-                            setTodayOnly(checked === true)
-                        }
-                        name="today-spending"
-                    />
-                    <Label htmlFor="today-spending">Today's Spending</Label>
-                </Field>
-                <Combobox
-                    items={paymentType}
-                    value={paymentTypeFilter}
-                    onValueChange={(value) =>
-                        table
-                            .getColumn("transaction_type")
-                            ?.setFilterValue(value || undefined)
-                    }
-                >
-                    <ComboboxInput placeholder="Payment Type" />
-                    <ComboboxContent>
-                        <ComboboxEmpty>No items found.</ComboboxEmpty>
-                        <ComboboxList>
-                            {(item) => (
-                                <ComboboxItem key={item} value={item}>
-                                    {item == "" ? "All" : item}
-                                </ComboboxItem>
-                            )}
-                        </ComboboxList>
-                    </ComboboxContent>
-                </Combobox>
+            <div className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <BulkEditControls
+                    isEditing={bulk.isEditing}
+                    changeCount={bulk.changeCount}
+                    saving={bulk.saving}
+                    disabled={data.length === 0}
+                    onStart={bulk.start}
+                    onSave={bulk.save}
+                    onCancel={bulk.cancel}
+                />
+                <DataTableFilters
+                    table={table}
+                    periodDays={periodDays}
+                    onPeriodDaysChange={setPeriodDays}
+                />
             </div>
-            <div className="overflow-hidden rounded-md border">
+            <div className="overflow-x-auto rounded-md border">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -137,40 +145,32 @@ export function DataTable<TData, TValue>({
                         ))}
                     </TableHeader>
                     <TableBody>
-                        {table.getRowModel().rows?.length ? (
+                        {table.getRowModel().rows.length ? (
                             table.getRowModel().rows.map((row, index) => (
                                 <TableRow
                                     key={row.id}
-                                    data-state={
-                                        row.getIsSelected() && "selected"
-                                    }
+                                    className={cn(
+                                        bulk.isChanged(row.original) &&
+                                            "bg-amber-50 dark:bg-amber-950/30"
+                                    )}
                                 >
-                                    {row.getVisibleCells().map((cell) => {
-                                        if (cell.column.id === "id") {
-                                            return (
-                                                <TableCell
-                                                    key={cell.id}
-                                                    className="font-medium"
-                                                >
-                                                    {index + 1}
-                                                </TableCell>
-                                            )
-                                        }
-                                        return (
-                                            <TableCell key={cell.id}>
-                                                {flexRender(
-                                                    cell.column.columnDef.cell,
-                                                    cell.getContext()
-                                                )}
-                                            </TableCell>
-                                        )
-                                    })}
+                                    {row.getVisibleCells().map((cell) => (
+                                        <TableCell
+                                            key={cell.id}
+                                            className={cn(
+                                                cell.column.id === "id" &&
+                                                    "font-medium"
+                                            )}
+                                        >
+                                            {renderCell(cell, index)}
+                                        </TableCell>
+                                    ))}
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={columns.length}
+                                    colSpan={visibleColumnCount}
                                     className="h-24 text-center"
                                 >
                                     No results.
@@ -181,13 +181,10 @@ export function DataTable<TData, TValue>({
                     <TableFooter>
                         <TableRow>
                             <TableCell
-                                colSpan={columns.length - 1}
+                                colSpan={visibleColumnCount - 1}
                                 className="font-bold"
                             >
-                                Total{" "}
-                                {paymentTypeFilter
-                                    ? `(${paymentTypeFilter})`
-                                    : "(All)"}
+                                Total ({paymentTypeFilter || "All"})
                             </TableCell>
                             <TableCell className="text-right font-bold">
                                 Rs. {filteredTotal.toLocaleString()}
@@ -196,24 +193,7 @@ export function DataTable<TData, TValue>({
                     </TableFooter>
                 </Table>
             </div>
-            <div className="flex items-center justify-end space-x-2 py-4">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => table.previousPage()}
-                    disabled={!table.getCanPreviousPage()}
-                >
-                    Previous
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => table.nextPage()}
-                    disabled={!table.getCanNextPage()}
-                >
-                    Next
-                </Button>
-            </div>
+            <DataTablePagination table={table} />
         </div>
     )
 }
