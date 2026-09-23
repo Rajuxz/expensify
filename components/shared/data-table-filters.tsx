@@ -1,5 +1,8 @@
 "use client"
+// Period + payment-type filters. Inline on md+ screens; on phones they
+// collapse behind a single "Filters" button to save toolbar space.
 import { Table } from "@tanstack/react-table"
+import { SlidersHorizontal } from "lucide-react"
 import {
     Combobox,
     ComboboxContent,
@@ -15,6 +18,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
 
 const paymentType = ["CASH", "ONLINE"]
 
@@ -33,16 +42,58 @@ type DataTableFiltersProps<TData> = {
     onPeriodDaysChange: (days: number) => void
 }
 
-export function DataTableFilters<TData>({
+export function DataTableFilters<TData>(props: DataTableFiltersProps<TData>) {
+    const paymentTypeFilter = props.table
+        .getColumn("transaction_type")
+        ?.getFilterValue() as string | undefined
+    const activeCount = (props.periodDays ? 1 : 0) + (paymentTypeFilter ? 1 : 0)
+
+    return (
+        <>
+            {/* md and up: controls inline in the toolbar */}
+            <div className="hidden flex-wrap items-center gap-2 md:flex">
+                <FilterControls {...props} />
+            </div>
+
+            {/* phones: one button that opens the same controls */}
+            <Popover>
+                <PopoverTrigger
+                    render={
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="md:hidden"
+                        >
+                            <SlidersHorizontal className="mr-1 h-4 w-4" />
+                            Filters
+                            {activeCount > 0 && (
+                                <span className="ml-1 rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
+                                    {activeCount}
+                                </span>
+                            )}
+                        </Button>
+                    }
+                />
+                <PopoverContent align="end" className="w-64 space-y-3 p-3">
+                    <FilterControls {...props} stacked />
+                </PopoverContent>
+            </Popover>
+        </>
+    )
+}
+
+function FilterControls<TData>({
     table,
     periodDays,
     onPeriodDaysChange,
-}: DataTableFiltersProps<TData>) {
+    stacked = false,
+}: DataTableFiltersProps<TData> & { stacked?: boolean }) {
     const paymentTypeFilter =
         (table.getColumn("transaction_type")?.getFilterValue() as string) ?? ""
+    const width = stacked ? "w-full" : undefined
 
     return (
-        <div className="flex flex-wrap items-center gap-2">
+        <>
             <Select
                 items={PERIODS}
                 value={periodDays}
@@ -51,7 +102,10 @@ export function DataTableFilters<TData>({
                     table.firstPage()
                 }}
             >
-                <SelectTrigger className="w-36" aria-label="Period">
+                <SelectTrigger
+                    className={stacked ? "w-full" : "w-36"}
+                    aria-label="Period"
+                >
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -72,7 +126,11 @@ export function DataTableFilters<TData>({
                     table.firstPage()
                 }}
             >
-                <ComboboxInput placeholder="Payment Type" showClear />
+                <ComboboxInput
+                    placeholder="Payment Type"
+                    showClear
+                    className={width}
+                />
                 <ComboboxContent>
                     <ComboboxEmpty>No items found.</ComboboxEmpty>
                     <ComboboxList>
@@ -84,6 +142,6 @@ export function DataTableFilters<TData>({
                     </ComboboxList>
                 </ComboboxContent>
             </Combobox>
-        </div>
+        </>
     )
 }

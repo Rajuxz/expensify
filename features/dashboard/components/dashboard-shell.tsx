@@ -7,10 +7,12 @@ import { DashboardNavbar } from "./dashboard-navbar"
 type DashboardShellProps = {
     children: React.ReactNode
     monthlyAmount: number
+    showAdminLink: boolean
 }
 export function DashboardShell({
     children,
     monthlyAmount,
+    showAdminLink,
 }: DashboardShellProps) {
     const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
@@ -21,6 +23,7 @@ export function DashboardShell({
                 collapsed={collapsed}
                 mobileOpen={mobileOpen}
                 onMobileOpenChange={setMobileOpen}
+                showAdminLink={showAdminLink}
             />
 
             <div

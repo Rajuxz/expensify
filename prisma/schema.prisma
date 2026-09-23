@@ -13,10 +13,14 @@ model Users {
   clerk_id     String       @unique
   phone_number String?      @unique
   avatar_url   String?
+  // primary verified email from Clerk; used to match SUPER_ADMIN_EMAILS
+  email        String?
+  role         Roles        @default(USER)
   created_at   DateTime     @default(now())
   updated_at   DateTime?
   expenses     Expenses[]
   categories   Categories[]
+  debts        Debts[]
 }
 
 model Categories {
@@ -30,6 +34,14 @@ model Categories {
   userId     String     @db.Uuid
 
   @@unique([userId, name])
+}
+
+// Access levels, lowest to highest. SUPER_ADMIN is only ever granted via
+// the SUPER_ADMIN_EMAILS env var, never from the UI.
+enum Roles {
+  USER
+  ADMIN
+  SUPER_ADMIN
 }
 
 enum TransactionTypes {
@@ -51,4 +63,45 @@ model Expenses {
   category         Categories?      @relation(fields: [categoryId], references: [id])
   categoryId       String?          @db.Uuid
   isDeleted        Boolean          @default(false)
+}
+
+// Who owes whom: BORROWED = I owe them, LENT = they owe me.
+enum DebtDirection {
+  BORROWED
+  LENT
+}
+
+// A loan with simple monthly interest on the outstanding principal.
+// Interest is NOT stored: it's derived from principal, rate, start date and
+// payments whenever the debt is read (see lib/debts/calculate.ts).
+model Debts {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  direction    DebtDirection
+  counterparty String
+  principal    Decimal        @db.Decimal(12, 2)
+  // percent per month, e.g. 2.00 = 2% of the outstanding principal monthly
+  monthly_rate Decimal        @db.Decimal(5, 2)
+  start_date   DateTime
+  note         String?
+  created_at   DateTime       @default(now())
+  updated_at   DateTime?
+  user         Users          @relation(fields: [userId], references: [id])
+  userId       String         @db.Uuid
+  payments     DebtPayments[]
+
+  @@index([userId])
+}
+
+// Any amount paid towards a debt. Applied to accrued interest first,
+// then to principal.
+model DebtPayments {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  amount     Decimal  @db.Decimal(12, 2)
+  paid_on    DateTime
+  note       String?
+  created_at DateTime @default(now())
+  debt       Debts    @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  debtId     String   @db.Uuid
+
+  @@index([debtId])
 }
