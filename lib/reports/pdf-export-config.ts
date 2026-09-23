@@ -11,6 +11,10 @@ import {
 } from "@/actions/reports"
 
 import getCurrentWeek from "@/lib/helpers/getCurrentWeek"
+import { endOfDay, format, startOfDay } from "date-fns"
+
+// Labels are formatted here, in the user's timezone, not on the server.
+const label = (date: Date) => format(date, "yyyy-MM-dd")
 
 export type ReportPeriod = Period | CustomReportPeriod
 
@@ -44,11 +48,15 @@ const pdfExportConfig: Record<ReportPeriod, PdfExportConfig<any>> = {
         emptyMessage: "No expenses recorded today.",
     },
     "single-day": {
-        fetchData: (params) => {
+        fetchData: async (params) => {
             if (!params?.date) {
                 throw new Error("A date is required for single-day reports.")
             }
-            return getDailyReportData(params.date)
+            const data = await getWeeklyReport(
+                startOfDay(params.date),
+                endOfDay(params.date)
+            )
+            return { ...data, date: label(params.date) }
         },
         generatePdf: () =>
             import("@/lib/pdf/daily-report").then((m) => ({
@@ -57,9 +65,10 @@ const pdfExportConfig: Record<ReportPeriod, PdfExportConfig<any>> = {
         emptyMessage: "No expenses recorded on the selected day.",
     },
     weekly: {
-        fetchData: () => {
+        fetchData: async () => {
             const { fromDate, toDate } = getCurrentWeek()
-            return getWeeklyReport(fromDate, toDate)
+            const data = await getWeeklyReport(fromDate, toDate)
+            return { ...data, from: label(fromDate), to: label(toDate) }
         },
         generatePdf: () =>
             import("@/lib/pdf/weekly-report").then((m) => ({
@@ -68,11 +77,20 @@ const pdfExportConfig: Record<ReportPeriod, PdfExportConfig<any>> = {
         emptyMessage: "No expenses recorded this week.",
     },
     "date-range": {
-        fetchData: (params) => {
+        fetchData: async (params) => {
             if (!params?.from || !params?.to) {
                 throw new Error("A date range is required.")
             }
-            return getWeeklyReport(params.from, params.to)
+            const data = await getWeeklyReport(
+                startOfDay(params.from),
+                endOfDay(params.to)
+            )
+            return {
+                ...data,
+                title: "Custom Range Expense Report",
+                from: label(params.from),
+                to: label(params.to),
+            }
         },
         generatePdf: () =>
             import("@/lib/pdf/weekly-report").then((m) => ({
