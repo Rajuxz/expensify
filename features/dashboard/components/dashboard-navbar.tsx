@@ -87,9 +87,10 @@ export function DashboardNavbar({
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="gap-1.5 hidden sm:flex cursor-pointer"
+                                    className="gap-1.5 cursor-pointer"
                                 >
                                     <Plus className="h-4 w-4" />
+                                    <span className="sr-only">Add expense</span>
                                 </Button>
                             }
                             title="Add Expense"
