@@ -1,7 +1,6 @@
 "use server"
 import requireUser from "@/lib/auth/getCurrentUser"
 import { getMonthName } from "@/lib/helpers/getMonthName"
-import { getStartOfWeek } from "@/lib/helpers/getStartOfWeek"
 import { prisma } from "@/lib/prisma"
 export async function getDailyReportData(date: Date = new Date()) {
     const user = await requireUser()
@@ -39,18 +38,25 @@ export async function getDailyReportData(date: Date = new Date()) {
     }
 }
 
+// Expenses between two instants (inclusive). The client computes the
+// boundaries (start/end of its local day) so the user's timezone is respected.
 export async function getWeeklyReport(from: Date, to: Date) {
     const user = await requireUser()
-    const now = new Date()
-    const weekStart = getStartOfWeek(now)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekEnd.getDate() + 7)
+    if (
+        !(from instanceof Date) ||
+        !(to instanceof Date) ||
+        isNaN(from.getTime()) ||
+        isNaN(to.getTime()) ||
+        from > to
+    ) {
+        throw new Error("Invalid date range.")
+    }
 
     const expenses = await prisma.expenses.findMany({
         where: {
             isDeleted: false,
             userId: user.id,
-            expense_date: { gte: weekStart, lte: weekEnd },
+            expense_date: { gte: from, lte: to },
         },
         include: { category: true },
         orderBy: { expense_date: "asc" },
@@ -58,14 +64,19 @@ export async function getWeeklyReport(from: Date, to: Date) {
     const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0)
 
     return {
-        from: weekStart.toISOString().split("T")[0],
-        to: weekEnd.toISOString().split("T")[0],
+        from: from.toISOString().split("T")[0],
+        to: to.toISOString().split("T")[0],
         user: user.username,
         total,
         rows: expenses.map((e) => ({
             time: e.expense_date.toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
+            }),
+            date: e.expense_date.toLocaleDateString("en-US", {
+                month: "numeric",
+                day: "2-digit",
+                year: "numeric",
             }),
             category: e.category?.name ?? "Uncategorized",
             paymentType: e.transaction_type,
