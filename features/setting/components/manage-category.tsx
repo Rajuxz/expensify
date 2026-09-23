@@ -22,10 +22,11 @@ const ManageCategory = () => {
     const { data: categories } = useSWR("categories", getCategories)
 
     const [showAll, setShowAll] = useState(false)
+    const selectableCategories = categories?.filter((cat) => cat.id !== null)
     const visibleCategories = showAll
-        ? categories
-        : categories?.slice(0, VISIBLE_COUNT)
-    const hasMore = (categories?.length ?? 0) > VISIBLE_COUNT
+        ? selectableCategories
+        : selectableCategories?.slice(0, VISIBLE_COUNT)
+    const hasMore = (selectableCategories?.length ?? 0) > VISIBLE_COUNT
 
     async function handleCreate(values: { name: string }) {
         const result = await createCategory(values.name)
