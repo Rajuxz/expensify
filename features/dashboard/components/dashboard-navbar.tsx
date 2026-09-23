@@ -1,7 +1,15 @@
 "use client"
 
-import { Menu, PanelLeftClose, PanelLeftOpen, Bell, Plus } from "lucide-react"
+import {
+    Menu,
+    PanelLeftClose,
+    PanelLeftOpen,
+    Bell,
+    Plus,
+    User,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useUser } from "@clerk/nextjs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
     Tooltip,
@@ -11,6 +19,7 @@ import {
 
 import ExpenseForm from "@/components/expenses/expense-form"
 import AppDialog from "@/components/shared/app-dialog"
+import getInitials from "@/lib/helpers/nameUtility"
 export function DashboardNavbar({
     collapsed,
     onCollapsedChange,
@@ -22,6 +31,11 @@ export function DashboardNavbar({
     onMobileOpenChange: (open: boolean) => void
     monthlyAmount: number
 }) {
+    const { user, isLoaded } = useUser()
+    if (!isLoaded) return null
+    if (!user) return null
+    const initials = getInitials(user.fullName ?? user.firstName ?? "?")
+
     return (
         <header className="sticky top-0 z-20 flex h-14 items-center gap-1 border-b bg-background/95 px-3 backdrop-blur supports-backdrop-filter:bg-background/60 sm:px-4">
             {/* Mobile: opens the Sheet drawer */}
@@ -94,7 +108,7 @@ export function DashboardNavbar({
             </Button>
 
             <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-xs">RJ</AvatarFallback>
+                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
         </header>
     )
