@@ -46,6 +46,9 @@ export const columns: ColumnDef<Expense>[] = [
         id: "category",
         accessorFn: (row) => row.category?.name ?? "Uncategorized",
         header: "Category",
+        // filter value `true` = only uncategorized (matched by id, not name)
+        filterFn: (row, _columnId, onlyUncategorized) =>
+            !onlyUncategorized || !row.original.category,
         cell: ({ row }) => {
             const categoryName = row.original.category?.name
             return categoryName ?? "Uncategorized"

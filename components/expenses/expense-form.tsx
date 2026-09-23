@@ -6,15 +6,12 @@ import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import useSWR, { mutate } from "swr"
 import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import FieldError from "@/components/shared/field-error"
-import { createCategory, getCategories } from "@/actions/category"
-import { selectableProps } from "@/lib/selectable-props"
+import { CategoryPicker } from "./category-picker"
 import {
     Popover,
     PopoverTrigger,
@@ -31,14 +28,6 @@ type ExpenseFormProps = {
 const TRANSACTION_TYPES = ["CASH", "ONLINE"] as const
 
 const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
-    const { data: categories = [], isLoading: categoriesLoading } = useSWR(
-        "categories",
-        getCategories
-    )
-
-    const selectableCategory = categories.filter((cat) => cat.id !== null)
-    const hasCategories = selectableCategory.length > 0
-
     const form = useForm<ExpenseFormData>({
         resolver: zodResolver(expenseSchema),
         defaultValues: {
@@ -213,52 +202,19 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
                     </div>
                 </div>
                 {/* Category */}
-                <div className="space-y-1.5">
-                    <Label>Category</Label>
-                    {categoriesLoading ? (
-                        <p className="text-sm text-muted-foreground">
-                            Loading categories...
-                        </p>
-                    ) : !hasCategories ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span>No categories yet.</span>
+                <Controller
+                    name="categoryId"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                        <div>
+                            <CategoryPicker
+                                value={field.value}
+                                onChange={field.onChange}
+                            />
+                            <FieldError message={fieldState.error?.message} />
                         </div>
-                    ) : (
-                        <Controller
-                            name="categoryId"
-                            control={form.control}
-                            render={({ field, fieldState }) => (
-                                <>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {selectableCategory.map((cat) => (
-                                            <Badge
-                                                key={cat.id}
-                                                variant={
-                                                    field.value === cat.id
-                                                        ? "default"
-                                                        : "outline"
-                                                }
-                                                className="cursor-pointer px-3 py-1"
-                                                {...selectableProps(() =>
-                                                    field.onChange(
-                                                        field.value === cat.id
-                                                            ? null
-                                                            : cat.id
-                                                    )
-                                                )}
-                                            >
-                                                {cat.name}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                    <FieldError
-                                        message={fieldState.error?.message}
-                                    />
-                                </>
-                            )}
-                        />
                     )}
-                </div>
+                />
 
                 {/* Description */}
                 <div className="space-y-1.5">

@@ -30,6 +30,7 @@ import { useBulkCategoryEdit } from "@/hooks/use-bulk-category-edit"
 import { BulkEditControls } from "@/components/expenses/bulk-edit-controls"
 import { CategoryCellEditor } from "@/components/expenses/category-cell-editor"
 import { BulkDeleteButton } from "@/components/expenses/bulk-delete-button"
+import { UncategorizedBanner } from "@/components/expenses/uncategorized-banner"
 import { Button } from "@/components/ui/button"
 import { DataTableFilters } from "./data-table-filters"
 import { DataTablePagination } from "./data-table-pagination"
@@ -103,6 +104,22 @@ export function DataTable<TData extends Expense, TValue>({
         .getFilteredRowModel()
         .rows.reduce((sum, row) => sum + Number(row.original.amount), 0)
 
+    const uncategorizedCount = data.filter((e) => !e.category).length
+    const categoryColumn = table.getColumn("category")
+    const onlyUncategorized = categoryColumn?.getFilterValue() === true
+
+    function showUncategorized() {
+        setPeriodDays(0) // across all time, so the list matches the count
+        categoryColumn?.setFilterValue(true)
+        table.firstPage()
+        if (!bulk.isEditing) bulk.start()
+    }
+
+    function showAll() {
+        categoryColumn?.setFilterValue(undefined)
+        table.firstPage()
+    }
+
     function renderCell(cell: Cell<TData, unknown>, rowIndex: number) {
         const expense = cell.row.original
 
@@ -125,6 +142,13 @@ export function DataTable<TData extends Expense, TValue>({
 
     return (
         <div>
+            <UncategorizedBanner
+                count={uncategorizedCount}
+                active={onlyUncategorized}
+                editing={bulk.isEditing}
+                onCategorize={showUncategorized}
+                onShowAll={showAll}
+            />
             <div className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <div className="flex flex-wrap items-center gap-2">
                     <BulkEditControls
