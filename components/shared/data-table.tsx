@@ -10,6 +10,7 @@ import {
     useReactTable,
     getPaginationRowModel,
     ColumnFiltersState,
+    RowSelectionState,
     getFilteredRowModel,
 } from "@tanstack/react-table"
 
@@ -28,6 +29,8 @@ import { Expense } from "@/types/expenseTableTypes"
 import { useBulkCategoryEdit } from "@/hooks/use-bulk-category-edit"
 import { BulkEditControls } from "@/components/expenses/bulk-edit-controls"
 import { CategoryCellEditor } from "@/components/expenses/category-cell-editor"
+import { BulkDeleteButton } from "@/components/expenses/bulk-delete-button"
+import { Button } from "@/components/ui/button"
 import { DataTableFilters } from "./data-table-filters"
 import { DataTablePagination } from "./data-table-pagination"
 
@@ -42,6 +45,8 @@ export function DataTable<TData extends Expense, TValue>({
 }: DataTableProps<TData, TValue>) {
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
     const [periodDays, setPeriodDays] = useState(0)
+    // keyed by expense id (getRowId), so selection survives pagination
+    const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
     const bulk = useBulkCategoryEdit(data)
 
     const { data: categories = [], isLoading: categoriesLoading } = useSWR(
@@ -69,14 +74,25 @@ export function DataTable<TData extends Expense, TValue>({
         getFilteredRowModel: getFilteredRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         onColumnFiltersChange: setColumnFilters,
+        onRowSelectionChange: setRowSelection,
         getRowId: (row) => row.id,
         // don't jump back to page 1 after a save refreshes the data
         autoResetPageIndex: false,
         state: {
             columnFilters,
-            columnVisibility: { actions: !bulk.isEditing },
+            rowSelection,
+            columnVisibility: {
+                actions: !bulk.isEditing,
+                select: !bulk.isEditing,
+            },
         },
     })
+
+    // Only rows the current filters show — a row selected and then filtered
+    // out (or already deleted) is never deleted by surprise.
+    const selectedExpenses = table
+        .getFilteredSelectedRowModel()
+        .rows.map((row) => row.original)
 
     const { pageIndex, pageSize } = table.getState().pagination
     const visibleColumnCount = table.getVisibleLeafColumns().length
@@ -110,15 +126,32 @@ export function DataTable<TData extends Expense, TValue>({
     return (
         <div>
             <div className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <BulkEditControls
-                    isEditing={bulk.isEditing}
-                    changeCount={bulk.changeCount}
-                    saving={bulk.saving}
-                    disabled={data.length === 0}
-                    onStart={bulk.start}
-                    onSave={bulk.save}
-                    onCancel={bulk.cancel}
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                    <BulkEditControls
+                        isEditing={bulk.isEditing}
+                        changeCount={bulk.changeCount}
+                        saving={bulk.saving}
+                        disabled={data.length === 0}
+                        onStart={bulk.start}
+                        onSave={bulk.save}
+                        onCancel={bulk.cancel}
+                    />
+                    {!bulk.isEditing && selectedExpenses.length > 0 && (
+                        <>
+                            <BulkDeleteButton
+                                expenses={selectedExpenses}
+                                onDeleted={() => setRowSelection({})}
+                            />
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setRowSelection({})}
+                            >
+                                Clear selection
+                            </Button>
+                        </>
+                    )}
+                </div>
                 <DataTableFilters
                     table={table}
                     periodDays={periodDays}
@@ -149,6 +182,11 @@ export function DataTable<TData extends Expense, TValue>({
                             table.getRowModel().rows.map((row, index) => (
                                 <TableRow
                                     key={row.id}
+                                    data-state={
+                                        row.getIsSelected()
+                                            ? "selected"
+                                            : undefined
+                                    }
                                     className={cn(
                                         bulk.isChanged(row.original) &&
                                             "bg-amber-50 dark:bg-amber-950/30"

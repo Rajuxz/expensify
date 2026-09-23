@@ -3,12 +3,36 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Expense } from "@/types/expenseTableTypes"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Pencil, Trash2 } from "lucide-react"
 import AppDialog from "../shared/app-dialog"
 import ExpenseForm from "./expense-form"
 import { DeleteExpenseButton } from "./delete-expense-button"
 
 export const columns: ColumnDef<Expense>[] = [
+    {
+        id: "select",
+        header: ({ table }) => (
+            <Checkbox
+                checked={table.getIsAllPageRowsSelected()}
+                indeterminate={
+                    table.getIsSomePageRowsSelected() &&
+                    !table.getIsAllPageRowsSelected()
+                }
+                onCheckedChange={(checked) =>
+                    table.toggleAllPageRowsSelected(checked)
+                }
+                aria-label="Select all on this page"
+            />
+        ),
+        cell: ({ row }) => (
+            <Checkbox
+                checked={row.getIsSelected()}
+                onCheckedChange={(checked) => row.toggleSelected(checked)}
+                aria-label={`Select ${row.original.title}`}
+            />
+        ),
+    },
     {
         accessorKey: "id",
         header: "Id",
