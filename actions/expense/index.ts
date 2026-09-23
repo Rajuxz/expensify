@@ -495,7 +495,11 @@ export async function bulkUpdateExpenseCategory(
             let updated = 0
             for (const [categoryId, ids] of byCategory) {
                 const res = await tx.expenses.updateMany({
-                    where: { id: { in: ids }, userId: user.id, isDeleted: false },
+                    where: {
+                        id: { in: ids },
+                        userId: user.id,
+                        isDeleted: false,
+                    },
                     data: { categoryId, updated_at: new Date() },
                 })
                 updated += res.count
@@ -515,4 +519,38 @@ export async function bulkUpdateExpenseCategory(
 
     refresh()
     return { success: true, count: updates.size }
+}
+
+// Soft-delete many expenses at once (sets isDeleted). Only the caller's own,
+// not-yet-deleted expenses are touched; anything else is silently skipped.
+export async function bulkSoftDeleteExpenses(ids: string[]) {
+    const user = await requireUser()
+    const parsed = z.array(z.uuid()).min(1).max(500).safeParse(ids)
+    if (!parsed.success) {
+        return { success: false, error: "Invalid selection." }
+    }
+
+    try {
+        const { count } = await prisma.expenses.updateMany({
+            where: {
+                id: { in: [...new Set(parsed.data)] },
+                userId: user.id,
+                isDeleted: false,
+            },
+            data: { isDeleted: true, updated_at: new Date() },
+        })
+
+        if (count === 0) {
+            return {
+                success: false,
+                error: "Those expenses were already deleted. Please refresh.",
+            }
+        }
+
+        refresh()
+        return { success: true, count }
+    } catch (error) {
+        console.error("Failed to bulk delete expenses:", error)
+        return { success: false, error: "Failed to delete expenses." }
+    }
 }
