@@ -24,7 +24,6 @@ import { ExpenseFormData, expenseSchema } from "@/schemas/expense"
 import { createExpense, updateExpenses } from "@/actions/expense"
 import { toast } from "sonner"
 import { Expense } from "@/types/expenseTableTypes"
-import { CategoryDialog } from "@/features/setting/components/category-form"
 type ExpenseFormProps = {
     initialData?: Expense
 }
@@ -36,7 +35,9 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
         "categories",
         getCategories
     )
-    const hasCategories = categories.length > 0
+
+    const selectableCategory = categories.filter((cat) => cat.id !== null)
+    const hasCategories = selectableCategory.length > 0
 
     const form = useForm<ExpenseFormData>({
         resolver: zodResolver(expenseSchema),
@@ -49,16 +50,7 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
             categoryId: initialData?.category?.id ?? null,
         },
     })
-    async function handleCreateCategory(values: { name: string }) {
-        const result = await createCategory(values.name)
-        if (result.success) {
-            toast.success("Category created.")
-            mutate("categories")
-        } else {
-            toast.error(result.error ?? "Something went wrong.")
-            throw new Error("Failed to create category")
-        }
-    }
+
     const onSubmit = async (data: ExpenseFormData) => {
         try {
             if (initialData) {
@@ -230,10 +222,6 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
                     ) : !hasCategories ? (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span>No categories yet.</span>
-                            <CategoryDialog
-                                mode="add"
-                                onSubmit={handleCreateCategory}
-                            />
                         </div>
                     ) : (
                         <Controller
@@ -242,7 +230,7 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
                             render={({ field, fieldState }) => (
                                 <>
                                     <div className="flex gap-2 flex-wrap">
-                                        {categories.map((cat) => (
+                                        {selectableCategory.map((cat) => (
                                             <Badge
                                                 key={cat.id}
                                                 variant={
@@ -252,7 +240,11 @@ const ExpenseForm = ({ initialData }: ExpenseFormProps) => {
                                                 }
                                                 className="cursor-pointer px-3 py-1"
                                                 {...selectableProps(() =>
-                                                    field.onChange(cat.id)
+                                                    field.onChange(
+                                                        field.value === cat.id
+                                                            ? null
+                                                            : cat.id
+                                                    )
                                                 )}
                                             >
                                                 {cat.name}
