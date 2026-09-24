@@ -1,3 +1,4 @@
+"use client"
 // category-dialog.tsx
 "use client"
 

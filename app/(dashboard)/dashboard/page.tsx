@@ -7,25 +7,17 @@ import {
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { PlaceholderCard } from "@/components/shared/placeholder-card"
-import { getStartOfWeek } from "@/lib/helpers/getStartOfWeek"
 import {
     getAverageDailySpend,
     getCashVsOnlineSplit,
     getMonthlyExpense,
     getMonthOverMonthComparison,
     getWeeklyExpense,
-    getWeeklySpendingTrend,
-} from "@/actions/expense"
+} from "@/actions/expense/stats"
 import { MonthComparisonCard } from "@/components/dashboard/month-comparison-card"
 const Dashboard = async () => {
     const now = new Date()
-    const weekStart = getStartOfWeek(now)
-    const weekEnd = new Date(weekStart)
-    const year = now.getFullYear()
-    const month = now.getMonth()
-
-    weekEnd.setDate(weekEnd.getDate() + 7)
-
+    // each stat computes its own period in the user's timezone
     const [
         avgPerDay,
         splitData,
@@ -33,11 +25,11 @@ const Dashboard = async () => {
         monthlySpending,
         monthComparison,
     ] = await Promise.all([
-        getAverageDailySpend(weekStart, weekEnd),
+        getAverageDailySpend(),
         getCashVsOnlineSplit(),
-        getWeeklyExpense(weekStart, weekEnd),
-        getMonthlyExpense(year, month),
-        getMonthOverMonthComparison(year, month),
+        getWeeklyExpense(),
+        getMonthlyExpense(),
+        getMonthOverMonthComparison(),
     ])
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
@@ -52,7 +44,7 @@ const Dashboard = async () => {
                         </p>
                     </CardHeader>
                     <CardContent>
-                        <WeeklySpendingChart weekStart={getStartOfWeek(now)} />
+                        <WeeklySpendingChart />
                     </CardContent>
                 </Card>
 

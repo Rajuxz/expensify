@@ -182,3 +182,21 @@ console.log("calculate.check: all passed")
     assert.ok(after.overpaid < 0.06, `leftover ${after.overpaid}`)
 }
 console.log("calculate.check (installments): all passed")
+
+// 10. timezone: a loan started Jan 31 (Nepal) posts on Feb 28 Nepal time,
+//     regardless of the machine's own timezone
+{
+    const jan31Npt = new Date("2026-01-30T18:15:00Z")
+    const s = calculateDebt(
+        {
+            principal: 1000,
+            monthlyRate: 1,
+            startDate: jan31Npt,
+            payments: [],
+            timeZone: "Asia/Kathmandu",
+        },
+        new Date("2026-02-15T00:00:00Z")
+    )
+    assert.equal(s.nextPostingDate?.toISOString(), "2026-02-27T18:15:00.000Z")
+}
+console.log("calculate.check (timezone): all passed")

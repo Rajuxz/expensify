@@ -2,6 +2,7 @@
 // Read side of the debts module. Always scoped to the current user.
 import * as z from "zod"
 import requireUser from "@/lib/auth/getCurrentUser"
+import { userTimeZone } from "@/lib/auth/timezone"
 import { prisma } from "@/lib/prisma"
 import { serializeDebt, type DebtView } from "@/lib/debts/serialize"
 
@@ -13,7 +14,7 @@ export async function getDebts(): Promise<DebtView[]> {
         include: { payments: true },
         orderBy: { start_date: "desc" },
     })
-    return debts.map((d) => serializeDebt(d))
+    return debts.map((d) => serializeDebt(d, userTimeZone(user)))
 }
 
 /** One debt with payments + full interest timeline, or null if not theirs. */
@@ -24,5 +25,5 @@ export async function getDebt(id: string): Promise<DebtView | null> {
         where: { id, userId: user.id },
         include: { payments: true },
     })
-    return debt ? serializeDebt(debt) : null
+    return debt ? serializeDebt(debt, userTimeZone(user)) : null
 }

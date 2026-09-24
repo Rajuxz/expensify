@@ -76,7 +76,7 @@ export function ExpenseRowMenu({ expense }: { expense: Expense }) {
                         <DialogDescription>
                             {dialog === "edit"
                                 ? "Update the details for your expense."
-                                : "This action cannot be undone."}
+                                : "You can restore it later from Recently deleted."}
                         </DialogDescription>
                     </DialogHeader>
                     {dialog === "edit" && <ExpenseForm initialData={expense} />}

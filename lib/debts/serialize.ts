@@ -5,8 +5,9 @@ import { calculateDebt, type DebtInput } from "./calculate"
 
 type DebtRow = Prisma.DebtsGetPayload<{ include: { payments: true } }>
 
-export function toDebtInput(debt: DebtRow): DebtInput {
+export function toDebtInput(debt: DebtRow, timeZone?: string): DebtInput {
     return {
+        timeZone,
         principal: debt.principal.toNumber(),
         monthlyRate: debt.monthly_rate.toNumber(),
         startDate: debt.start_date,
@@ -18,8 +19,12 @@ export function toDebtInput(debt: DebtRow): DebtInput {
 }
 
 /** Debt + its computed state, in the shape the UI uses. */
-export function serializeDebt(debt: DebtRow, asOf = new Date()) {
-    const input = toDebtInput(debt)
+export function serializeDebt(
+    debt: DebtRow,
+    timeZone?: string,
+    asOf = new Date()
+) {
+    const input = toDebtInput(debt, timeZone)
     return {
         id: debt.id,
         direction: debt.direction,

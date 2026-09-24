@@ -125,7 +125,7 @@ export const columns: ColumnDef<Expense>[] = [
                             </Button>
                         }
                         title="Delete Expense?"
-                        description="This action cannot be undone."
+                        description="You can restore it later from Recently deleted."
                     >
                         <DeleteExpenseButton id={expense.id} />
                     </AppDialog>

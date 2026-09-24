@@ -24,6 +24,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { sumAmounts } from "@/lib/money"
 import { getCategories } from "@/actions/category"
 import { Expense } from "@/types/expenseTableTypes"
 import { useBulkCategoryEdit } from "@/hooks/use-bulk-category-edit"
@@ -101,9 +102,10 @@ export function DataTable<TData extends Expense, TValue>({
     const paymentTypeFilter = table
         .getColumn("transaction_type")
         ?.getFilterValue() as string | undefined
-    const filteredTotal = table
-        .getFilteredRowModel()
-        .rows.reduce((sum, row) => sum + Number(row.original.amount), 0)
+    // exact (paisa) sum — adding floats directly drifts
+    const filteredTotal = sumAmounts(
+        table.getFilteredRowModel().rows.map((row) => row.original.amount)
+    )
 
     const uncategorizedCount = data.filter((e) => !e.category).length
     const categoryColumn = table.getColumn("category")
