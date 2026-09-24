@@ -4,6 +4,7 @@
 import * as z from "zod"
 import { revalidatePath } from "next/cache"
 import requireUser from "@/lib/auth/getCurrentUser"
+import { userTimeZone } from "@/lib/auth/timezone"
 import { prisma } from "@/lib/prisma"
 import {
     debtPaymentSchema,
@@ -29,10 +30,11 @@ function revalidateDebts(id?: string) {
 async function findOwnDebt(id: string) {
     if (!z.uuid().safeParse(id).success) return null
     const user = await requireUser()
-    return prisma.debts.findFirst({
+    const debt = await prisma.debts.findFirst({
         where: { id, userId: user.id },
         include: { payments: true },
     })
+    return debt ? { ...debt, timeZone: userTimeZone(user) } : null
 }
 
 /**
@@ -91,7 +93,7 @@ export async function updateDebt(
 
     // editing the amount/rate/date must keep existing payments valid
     const problem = checkPayments({
-        ...toDebtInput(debt),
+        ...toDebtInput(debt, debt.timeZone),
         principal: d.principal,
         monthlyRate: d.monthlyRate,
         startDate: d.startDate,
@@ -146,7 +148,7 @@ export async function addDebtPayment(
         return { success: false, error: firstIssue(parsed.error) }
     const p = parsed.data
 
-    const current = toDebtInput(debt)
+    const current = toDebtInput(debt, debt.timeZone)
     const problem = checkPayments({
         ...current,
         payments: [...current.payments, { amount: p.amount, paidOn: p.paidOn }],

@@ -1,22 +1,13 @@
-import { getReportStats } from "@/actions/expense"
+import { getReportStats } from "@/actions/expense/stats"
 import { ReportStats } from "@/features/reports/types"
-import { getStartOfWeek } from "@/lib/helpers/getStartOfWeek"
 import useSWR from "swr"
 
 // hooks/use-report-stats.ts
 export function useReportStats(initialData?: ReportStats) {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth()
-    const weekStart = getStartOfWeek(now)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekEnd.getDate() + 7)
-
-    const { data } = useSWR(
-        ["report-stats", year, month, weekStart.toISOString()],
-        () => getReportStats(year, month, weekStart, weekEnd),
-        { fallbackData: initialData }
-    )
+    // periods are resolved server-side in the user's timezone
+    const { data } = useSWR("report-stats", () => getReportStats(), {
+        fallbackData: initialData,
+    })
 
     return [
         { label: "Total Transaction", value: data?.totalTransactions },

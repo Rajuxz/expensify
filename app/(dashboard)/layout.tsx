@@ -1,20 +1,17 @@
-import { getMonthlyExpense } from "@/actions/expense"
+import { getMonthlyExpense } from "@/actions/expense/stats"
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell"
 import requireUser from "@/lib/auth/getCurrentUser"
 import { hasRole } from "@/lib/auth/roles"
 import { Toaster } from "sonner"
+import { TimezoneSync } from "@/features/dashboard/components/timezone-sync"
 export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
-    const now = new Date()
-
-    const year = now.getFullYear()
-    const month = now.getMonth()
-
+    // "this month" is resolved in the user's timezone inside the action
     const [monthlyAmount, viewer] = await Promise.all([
-        getMonthlyExpense(year, month),
+        getMonthlyExpense(),
         requireUser(),
     ])
     return (
@@ -24,6 +21,8 @@ export default async function DashboardLayout({
             showAdminLink={hasRole(viewer.role, "ADMIN")}
         >
             <Toaster richColors />
+            {/* first visit only: save the browser's timezone */}
+            {viewer.timezone === null && <TimezoneSync />}
             {children}
         </DashboardShell>
     )

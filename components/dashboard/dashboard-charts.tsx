@@ -19,7 +19,7 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from "@/components/ui/chart"
-import { getWeeklySpendingTrend } from "@/actions/expense"
+import { getWeeklySpendingTrend } from "@/actions/expense/stats"
 
 // ---- Weekly spending (bar chart) ----
 
@@ -30,10 +30,10 @@ const weeklyChartConfig = {
     },
 } satisfies ChartConfig
 
-export function WeeklySpendingChart({ weekStart }: { weekStart: Date }) {
-    const { data, isLoading } = useSWR(
-        ["weekly-trend", weekStart.toISOString()],
-        () => getWeeklySpendingTrend(weekStart)
+// "this week" is resolved server-side in the user's timezone
+export function WeeklySpendingChart() {
+    const { data, isLoading } = useSWR("weekly-trend", () =>
+        getWeeklySpendingTrend()
     )
 
     if (isLoading || !data)

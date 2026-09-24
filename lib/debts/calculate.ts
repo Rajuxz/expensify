@@ -12,6 +12,7 @@
 // - A payment first brings interest up to its date, then pays unpaid
 //   interest, then principal. So paying `payoffToday` settles exactly.
 import { addMonths } from "date-fns"
+import { addMonthsInZone } from "@/lib/dates/ranges"
 import { toPaisa, toRupees } from "./money"
 
 export type DebtInput = {
@@ -19,6 +20,9 @@ export type DebtInput = {
     monthlyRate: number // percent per month, e.g. 2 = 2%
     startDate: Date
     payments: { amount: number; paidOn: Date }[] // rupees
+    // user's IANA timezone; "same day each month" is decided in it
+    // (matters for month-end start dates). Omitted = runtime's zone.
+    timeZone?: string
 }
 
 export type TimelineEntry = {
@@ -49,6 +53,11 @@ const MAX_MONTHS = 1200 // 100 years; guards against bad start dates
 
 export function calculateDebt(input: DebtInput, asOf = new Date()): DebtState {
     const rate = input.monthlyRate / 100
+    // the k-th monthly anniversary of the start date
+    const nthMonth = (k: number) =>
+        input.timeZone
+            ? addMonthsInZone(input.startDate, k, input.timeZone)
+            : addMonths(input.startDate, k)
     const payments = [...input.payments]
         .filter((p) => p.paidOn <= asOf)
         .sort((a, b) => a.paidOn.getTime() - b.paidOn.getTime())
@@ -68,7 +77,7 @@ export function calculateDebt(input: DebtInput, asOf = new Date()): DebtState {
 
     // accrue interest on the current principal from lastEvent to `until`
     const accrueTo = (until: Date) => {
-        const periodEnd = addMonths(input.startDate, month)
+        const periodEnd = nthMonth(month)
         const periodLength = periodEnd.getTime() - periodStart.getTime()
         const elapsed = until.getTime() - lastEvent.getTime()
         if (elapsed > 0 && periodLength > 0) {
@@ -78,7 +87,7 @@ export function calculateDebt(input: DebtInput, asOf = new Date()): DebtState {
     }
 
     while (month <= MAX_MONTHS) {
-        const postingDate = addMonths(input.startDate, month)
+        const postingDate = nthMonth(month)
         const payment = payments[i]
 
         if (payment && payment.paidOn < postingDate) {
@@ -160,7 +169,7 @@ export function calculateDebt(input: DebtInput, asOf = new Date()): DebtState {
         payoffToday: toRupees(principal + interestDue + accrued),
         totalPaid: toRupees(totalPaid),
         totalInterestCharged: toRupees(totalInterest),
-        nextPostingDate: isSettled ? null : addMonths(input.startDate, month),
+        nextPostingDate: isSettled ? null : nthMonth(month),
         nextMonthInterest: toRupees(Math.round(principal * rate)),
         isSettled,
         overpaid: toRupees(overpaid),

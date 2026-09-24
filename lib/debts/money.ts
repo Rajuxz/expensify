@@ -1,8 +1,6 @@
-// Money helpers for the debts module. All math runs in paisa (integer,
-// 1 rupee = 100 paisa) so repeated monthly interest doesn't drift.
-
-export const toPaisa = (rupees: number) => Math.round(rupees * 100)
-export const toRupees = (paisa: number) => paisa / 100
+// Money helpers for the debts module. Paisa conversion lives in lib/money.ts
+// (shared app-wide); this adds the debts-specific display format.
+export { toPaisa, toRupees } from "@/lib/money"
 
 /** "Rs. 1,234.50" — always two decimals for debt amounts. */
 export function formatRs(rupees: number) {

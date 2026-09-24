@@ -99,10 +99,8 @@ const pdfExportConfig: Record<ReportPeriod, PdfExportConfig<any>> = {
         emptyMessage: "No expenses recorded in the selected range.",
     },
     monthly: {
-        fetchData: () => {
-            const now = new Date()
-            return getMonthlyReport(now.getFullYear(), now.getMonth() + 1)
-        },
+        // "this month" is resolved server-side in the user's timezone
+        fetchData: () => getMonthlyReport(),
         generatePdf: () =>
             import("@/lib/pdf/monthly-report").then((m) => ({
                 generate: m.generateMonthlyReportPdf,
@@ -110,7 +108,7 @@ const pdfExportConfig: Record<ReportPeriod, PdfExportConfig<any>> = {
         emptyMessage: "No expenses recorded this month.",
     },
     yearly: {
-        fetchData: () => getYearlyReport(new Date().getFullYear()),
+        fetchData: () => getYearlyReport(),
         generatePdf: () =>
             import("@/lib/pdf/yearly-report").then((m) => ({
                 generate: m.generateYearlyReportPdf,

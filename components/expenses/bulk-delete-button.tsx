@@ -7,6 +7,7 @@ import AppDialog from "@/components/shared/app-dialog"
 import { bulkSoftDeleteExpenses } from "@/actions/expense"
 import { Expense } from "@/types/expenseTableTypes"
 import pluralize from "@/lib/helpers/pluralize"
+import { sumAmounts } from "@/lib/money"
 
 const PREVIEW_COUNT = 5
 
@@ -23,7 +24,7 @@ export function BulkDeleteButton({
     const [isPending, startTransition] = useTransition()
 
     const count = expenses.length
-    const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0)
+    const total = sumAmounts(expenses.map((e) => e.amount))
     const hidden = count - PREVIEW_COUNT
 
     function handleDelete() {
@@ -90,7 +91,8 @@ export function BulkDeleteButton({
                             {total.toLocaleString()}.
                         </li>
                         <li>
-                            There is no way to restore them from the app yet.
+                            You can restore them from Transactions → Recently
+                            deleted.
                         </li>
                     </ul>
                 </div>

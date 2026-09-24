@@ -16,11 +16,15 @@ model Users {
   // primary verified email from Clerk; used to match SUPER_ADMIN_EMAILS
   email        String?
   role         Roles        @default(USER)
+  // IANA timezone ("Asia/Kathmandu") for "today"/"this month" on the server.
+  // null = not detected yet; the app falls back to Asia/Kathmandu.
+  timezone     String?
   created_at   DateTime     @default(now())
   updated_at   DateTime?
   expenses     Expenses[]
   categories   Categories[]
   debts        Debts[]
+  auditLogs    AuditLogs[]
 }
 
 model Categories {
@@ -52,7 +56,7 @@ enum TransactionTypes {
 model Expenses {
   id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title            String
-  amount           Float
+  amount           Decimal          @db.Decimal(12, 2)
   description      String
   expense_date     DateTime         @default(now())
   transaction_type TransactionTypes
@@ -63,6 +67,8 @@ model Expenses {
   category         Categories?      @relation(fields: [categoryId], references: [id])
   categoryId       String?          @db.Uuid
   isDeleted        Boolean          @default(false)
+
+  @@index([userId, isDeleted, expense_date])
 }
 
 // Who owes whom: BORROWED = I owe them, LENT = they owe me.
@@ -104,4 +110,26 @@ model DebtPayments {
   debtId     String   @db.Uuid
 
   @@index([debtId])
+}
+
+// What an audit entry records. Extend as more actions become auditable
+// (admin role/credential changes are next — see docs/SystemDesign.md C4).
+enum AuditAction {
+  EXPENSE_RESTORED
+  EXPENSE_PURGED
+}
+
+// Append-only record of sensitive actions: who did what to which record.
+// `details` holds a small snapshot (e.g. title/amount of a purged expense,
+// since the row itself is gone). Never store secrets here.
+model AuditLogs {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  action     AuditAction
+  entityId   String      @db.Uuid
+  details    Json?
+  created_at DateTime    @default(now())
+  actor      Users       @relation(fields: [actorId], references: [id])
+  actorId    String      @db.Uuid
+
+  @@index([actorId, created_at])
 }

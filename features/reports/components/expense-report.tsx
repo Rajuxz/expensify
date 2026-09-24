@@ -11,7 +11,10 @@ import {
     PaymentTypeData,
     CategoryData,
 } from "@/features/reports/types"
-import { getCashVsOnlineSplit, getSpendingPerCategory } from "@/actions/expense"
+import {
+    getCashVsOnlineSplit,
+    getSpendingPerCategory,
+} from "@/actions/expense/stats"
 import useSWR from "swr"
 import { useReportStats } from "@/hooks/use-report-stats"
 
